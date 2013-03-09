@@ -1,0 +1,5 @@
+tmp/
+workspace/
+*/dist
+*/build
+*/build.xml
