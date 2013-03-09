@@ -1,0 +1,62 @@
+<%
+	def SETTINGS = ANUBIS.getFileInfo( '/entity/settings/info.pg' );
+%>
+<script>	
+	@register( SETTINGS.path )
+	
+	\$put( "${PAGE.context}", new function() {
+		var self = this;	
+		var svc = Service.lookup('system/Var');
+		
+		this.resultList;
+		this.selectedItem;
+		this.categoryList = [];
+		this.category;
+		
+		this.onload = function() {
+			this.categoryList = svc.getCategories();
+			if ( this.categoryList.length>0 ) this.category = this.categoryList[0];
+		}
+			
+		this.listModel = {
+			rows: 10,
+			fetchList: function(o) {
+				if ( !self.category ) return [];
+				
+				o.category = self.category;
+				return svc.getList(o);
+			}
+		} 	
+		
+		this.open = function() { 
+			var handler = function(x) {
+				svc.set( x.name, x.value );
+				self.listModel.refresh(true);
+			}
+			return new PopupOpener( "${SETTINGS.name}", {entity:this.selectedItem, saveHandler:handler, datatype:this.selectedItem.datatype } );	
+		}		
+		
+		this.propertyChangeListener = {
+			"category": function(x) {
+				self.listModel.load();
+			}
+		}		
+	}); 
+</script>
+
+<table class="grid" r:context="${PAGE.context}" r:model="listModel" r:name="selectedItem" r:varName="item" width="100%">
+<thead>
+	<th width="250">Name</th>
+	<th>Value</th>
+	<th>Category</th>
+</thead>
+<tbody>
+	<tr>
+		<td style="white-space:nowrap;">
+			<a r:context="${PAGE.context}" r:name="open">#{item.name}</a>
+		</td>
+		<td>#{item.value}</td>
+		<td>#{item.category}</td>
+	</tr>
+</tbody>
+</table>

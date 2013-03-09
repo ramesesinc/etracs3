@@ -1,0 +1,71 @@
+<% 
+	def folderid = (OPTIONS.folderid) ? OPTIONS.folderid : '/ext' ;
+	if (!folderid.startsWith("/")) folderid = PAGE.path + "/" + folderid;
+	
+	def resolveChildren(children) {
+		def items = []; 	
+		children?.each { 
+			def info = it;
+			if ( it.href ) 
+			{
+				try { 
+					def m =  ANUBIS.getFileInfo(it.href+'.pg'); 	
+					if (m) info = m; 
+				} catch(e) {
+					System.out.println("Unable to locate '${it.href}.pg' file caused by " + e.message); 
+				} 
+			}
+			if (!info.options) info.options = [:]; 
+			if (!info.options.title) info.options.title = info.title;
+			
+			items.add( info );
+		} 
+		return items; 
+	} 
+		
+	def finalItems = []; 
+	OPTIONS.categorize = (OPTIONS.categorize == true)? true: false;
+	if (OPTIONS.categorize) 
+	{
+		def groupitems = ANUBIS.getFolder(folderid).children.findAll{ it.hidden != true }; 
+		groupitems.each{groupinfo-> 
+			def children = ANUBIS.getFolder(groupinfo.path).allowedChildren.findAll{ it.hidden != true }; 
+			if (children) 
+			{	
+				groupinfo.group = true; 
+				finalItems.add(groupinfo); 
+				finalItems.addAll(resolveChildren(children));
+			} 
+		}
+	} 
+	else 
+	{
+		def children = ANUBIS.getFolder(folderid).allowedChildren.findAll{ it.hidden != true };
+		if (children) finalItems.addAll(resolveChildren(children));
+	} 
+	
+	def result = '';	
+	def style = OPTIONS.style? OPTIONS.style: 'vertical';	
+	if (style != 'none') 
+	{
+		def visibleItems = finalItems.findAll{ it.hidden != true };
+		result = ANUBIS.getTemplate('extbar/'+style, visibleItems, null, OPTIONS );
+		if ( !result ) { 
+			result = ANUBIS.getTemplate('extbar/vertical', visibleItems, null, OPTIONS );
+		} 
+	} 
+%> 
+
+<script>
+<%
+finalItems.each{ 
+	if (it.group != true) { 
+%>
+\$register( {id: '${it.name}', page: '${it.path}', context: '${it.context}', title:"${it.title}", options: ${ com.rameses.anubis.JsonUtil.toString(it.options)}});
+<%
+	}
+}
+%>
+</script>
+${result}
+

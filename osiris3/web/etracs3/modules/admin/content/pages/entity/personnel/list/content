@@ -1,0 +1,87 @@
+<%
+    def PERSONNEL_EDIT = ANUBIS.getFileInfo( "/" + MODULE.name + "/entity/personnel/edit.pg" );
+	def PERSONNEL_INFO = ANUBIS.getFileInfo( "/" + MODULE.name + "/entity/personnel/info.pg" );
+%>
+
+<script type="text/javascript">
+	@register(  PERSONNEL_EDIT.path ) 
+	
+	\$put( "${PAGE.context}", new function() {
+		var self = this;
+		var svc = Service.lookup( "admin/PersonnelService" );
+
+		this.selectedItem;
+		
+		this.qry = {};
+		
+		this.listModel = {
+			rows: 13,
+			fetchList: function(o) {
+				o.staffno = (self.qry.staffno) ? self.qry.staffno : null;
+				o.firstname = (self.qry.firstname) ? self.qry.firstname : null;
+				o.lastname = (self.qry.lastname) ? self.qry.lastname : null;
+				return svc.getList( o );	
+			}
+		}
+
+		this.reloadList = function() {
+			self.listModel.load();	
+		}
+		
+		var refreshList = function() {
+			self.listModel.refresh(true);
+		}
+
+		this.propertyChangeListener = {
+			orgUnit : function(o) { self.reloadList() }
+		}
+		
+		this.addNew = function() {
+			return new PopupOpener( "${PERSONNEL_EDIT.name}", { saveHandler: refreshList });
+		}
+		
+		this.reset = function() {
+			this.qry = {};
+			self.reloadList();
+		}
+		
+		this.show_search = true;
+		
+		this.toggleSearch = function() {
+			this.show_search = !this.show_search;
+		}
+	});
+</script>
+
+<style>
+.pagelist {width:90%;} 
+.page-title {padding-bottom:10px;} 
+</style>
+
+<table r:context="${PAGE.context}" r:model="${PAGE.listModel}" r:name="selectedItem" r:varName="item" class="grid" cellpadding="0" cellspacing="0" width="100%"> 
+<thead>
+	<tr>
+		<th width="80">Staff No.</th>
+		<th width="150">Last Name</th>
+		<th width="150">First Name</th>
+		<th width="100">Middle Name</th>
+		<th>Allow Login?</th>
+	</tr>
+</thead>
+<tbody>
+	<tr>
+		<td>
+			<a href="#${PERSONNEL_INFO.name}?objid=#{item.objid}">#{item.staffno}</a>	
+		</td>	
+		<td>#{item.lastname}</td>	
+		<td>#{item.firstname}</td>	
+		<td>#{item.middlename}</td>
+		<td style="padding-left:20px;">
+			<span class="rui-icon rui-icon-#{item.canlogin? 'apply': 'forbidden'}"/>
+		</td>	
+	</tr>
+</tbody>
+</table>
+
+<div r:dockTo="document-actions"></div> 
+

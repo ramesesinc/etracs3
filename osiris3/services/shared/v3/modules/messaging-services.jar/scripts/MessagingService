@@ -1,0 +1,271 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import java.rmi.server.UID
+import com.rameses.common.*;
+
+/*
+* This service manages the dispatching of messages to receivers. 
+*/
+class MessagingService
+{
+	@PersistenceContext('system')
+	def emsys
+	
+	@Env
+	def env
+	
+	@Service('Var')
+	def var
+	
+	@Service('DomainService')
+	def domainSvc
+	
+	@Service('NotificationService')
+	def notifier
+	
+	@Service('MessageListenerService')
+    def listenerSvc
+	
+	@Service('ETRACSUtilService')
+	def utilSvc
+	
+	
+	def INBOX_SCHEMA_NAME = 'messaging:inbox' 
+	def OUTBOX_SCHEMA_NAME = 'messaging:outbox' 
+	def SCHEMA_VERSION = '1.0'
+	
+	def STATE_UNREAD = 'UNREAD'
+	def STATE_READ   = 'READ'
+	def STATE_UNDELIVERED = 'UNDELIVERED'
+	def STATE_DELIVERED	  = 'DELIVERED'
+	def STATE_ERROR		  = 'ERROR' 
+	
+	
+	@ProxyMethod
+	public def onMessage( msg ) {
+		listenerSvc.onMessage( msg )
+		return msg 
+	}
+	
+	
+	@ProxyMethod
+	public void notify( receiver ) {
+		try{
+			if( notifier ) {
+				notifier.send( 'receiver:' + receiver  )
+			}
+		}
+		catch( e ) {
+			println 'NotificationService is not available.'
+		}
+	}
+	
+	@ProxyMethod 
+	public void send( msg  ) {
+		emsys.validate( OUTBOX_SCHEMA_NAME, msg )
+		emsys.create(OUTBOX_SCHEMA_NAME, msg ) 
+		notify( msg.receiver )
+    }
+	
+	@ProxyMethod 
+	public def sendMessage( type, subject, data  ) {
+		def msg = createMessage( type, subject, data )
+		send( msg )
+		return msg 
+    }
+	
+	@ProxyMethod
+	public void broadcast( msg, receivers ) {
+		receivers.each { receiverinfo ->
+			msg.objid = 'MI' + new UID()
+			msg.putAll( receiverinfo ) 
+			send( msg ) 
+		}
+	}
+	
+	@ProxyMethod
+	public void broadcastToDomains( msg ) {
+		def domainlist = domainSvc.getList()
+		domainlist.each{ domain -> 
+			msg.objid = 'MI' + new UID()
+			msg.receiver = domain.domainid 
+			send( msg ) 
+		}
+	}
+	
+	@ProxyMethod 
+	public def creatReply( msgid ) {
+		def msg = getInboxMessage( msgid )
+		return createReplyFromMessage( msg )
+	}	
+	
+	@ProxyMethod 
+	public def createReplyFromMessage( msg ) {
+		def sender  	= msg.sender
+		msg.objid       = 'MI' + new UID()
+		msg.schemaname	= OUTBOX_SCHEMA_NAME
+		msg.docstate	= STATE_UNDELIVERED
+		msg.sender 		= msg.receiver
+		msg.receiver	= sender
+		return msg 
+	}
+	
+	@ProxyMethod
+	public void saveInboxMessage( msg ) {
+		msg.schemaname = INBOX_SCHEMA_NAME
+		msg.docstate = STATE_UNREAD
+		emsys.validate( msg.schemaname, msg )
+		emsys.save( msg.schemaname, msg )
+	}
+	
+	@ProxyMethod
+	public void saveOutboxMessage( msg ) {
+		msg.schemaname = OUTBOX_SCHEMA_NAME
+		msg.docstate  = STATE_UNDELIVERED
+		emsys.validate( msg.schemaname, msg )
+		emsys.save( msg.schemaname, msg )
+	}
+	
+	@ProxyMethod 
+	public def createMessage( type, subject, data) {
+		def sender = getDefaultSender()
+		def receiver = getDefaultReceiver()
+		
+		return [
+            objid           : 'MI' + new UID(),
+			schemaname		: OUTBOX_SCHEMA_NAME,
+            docstate		: STATE_UNDELIVERED,
+			senderid		: sender.id,
+			receiverid		: receiver.id, 
+            sender			: sender,
+			receiver		: receiver,
+			subject			: subject,
+			dtposted		: new Date(),
+			type			: type,
+			data			: data,
+			message			: '',
+        ]
+	}
+	
+	@ProxyMethod
+	public void  processedSuccessfully( msg   ) {
+		msg.message = 'Successfully processed.'
+		msg.schemaname = INBOX_SCHEMA_NAME
+		msg.docstate = STATE_READ
+		emsys.validate( msg.schemaname, msg )
+        emsys.update( msg.schemaname, msg ) 
+    }
+	
+	@ProxyMethod
+	public void deliveredSuccessfully( msg   ) {
+		msg.message = 'Successfully delivered.'
+		msg.schemaname = OUTBOX_SCHEMA_NAME
+		msg.docstate = STATE_DELIVERED
+		emsys.validate( msg.schemaname, msg )
+        emsys.update( msg.schemaname, msg ) 
+    }
+	
+	@ProxyMethod
+	public void  errorProcessing( msg, errormsg    ) {
+        msg.message = errormsg 
+		msg.docstate = STATE_ERROR
+		emsys.validate( msg.schemaname, msg )
+        emsys.update( msg.schemaname, msg ) 
+    }
+	
+	@ProxyMethod
+	public void logMessage( msg, errorMsg ) {
+		msg.message = errorMsg 
+        emsys.update( msg.schemaname, msg )
+    }
+	
+	@ProxyMethod
+	public def getInboxMessages( receiverid ) {
+        return emsys.sqlContext.createNamedQuery('messaging:getInboxMessages')
+					.setParameter('receiverid', receiverid )
+					.resultList
+					.each{ deserialize( it ) }
+    }
+	
+	@ProxyMethod
+	public List getOutboxMessages( ) {
+		return emsys.sqlContext.createNamedQuery('messaging:getOutboxMessages')
+					.resultList
+					.each{ deserialize( it ) }
+	}
+	
+	@ProxyMethod
+	public List getOutboxMessagesByReceiver( receiverid ) {
+		return emsys.sqlContext.createNamedQuery('messaging:getOutboxMessagesByReceiver')
+					.setParameter('receiverid', receiverid)
+					.resultList
+					.each{ deserialize( it ) }
+	}
+    		
+	@ProxyMethod
+	public void moveOtherDestinationMessagesToOutbox() {
+		getOtherDestinationMessages( getDefaultSender().id  ).each{ msg ->
+			emsys.delete( msg.schemaname, msg )
+			msg.schemaname = OUTBOX_SCHEMA_NAME
+			msg.docstate = STATE_UNDELIVERED
+			emsys.save( msg.schemaname, msg )
+		}
+	}
+	
+	@ProxyMethod
+	public def getInboxMessage( msgid ) {
+		return emsys.read(INBOX_SCHEMA_NAME, [objid:msgid])
+	}
+	
+	@ProxyMethod
+	public def getOutboxMessage( msgid ) {
+		return emsys.read(OUTBOX_SCHEMA_NAME, [objid:msgid])
+	}
+	
+	@ProxyMethod
+	public def getDefaultSender() {
+		def id 	= ( var.client_id ? var.client_id : var.lgu_index )
+		def name 	= ( var.client_name ? var.client_name : var.lgu_name )
+		def type  = ( var.client_type ? var.client_type : var.lgu_type )
+		return [id:id, name:name, type:type]
+	}
+	
+	@ProxyMethod
+	public def getDefaultReceiver() {
+		def id 	= ( var.remote_id ? var.remote_id : var.remote_lgu_index )
+		def name 	= ( var.remote_name ? var.remote_name : var.remote_lgu_name )
+		def type  = ( var.remote_type ? var.remote_type : '' )
+		return [id:id, name:name, type:type]
+	}
+	
+	@ProxyMethod
+	public 	boolean remoteConnectionActive( ) {
+		def remote_connection_active = utilSvc.toBoolean( var.remote_connection_active, false ) 
+		def remote_connection_debug = utilSvc.toBoolean( var.remote_connection_debug, false )  
+		
+		if( remote_connection_debug == true && remote_connection_active == true) {
+			return true 
+		}
+		return false 
+	}
+	
+	
+	void deserialize( msg )  {
+		if( msg.sender ) msg.sender = emsys.serializer.read( msg.sender) 
+		if( msg.receiver ) msg.receiver = emsys.serializer.read( msg.receiver) 
+		if( msg.data ) msg.data = emsys.serializer.read( msg.data ) 
+	}
+	
+	List getOtherDestinationMessages( receiverid ) {
+        return emsys.sqlContext.createNamedQuery('messaging:getOtherDestinationMessages')
+					.setParameter('receiverid', receiverid )
+					.resultList
+					.each{ deserialize( it ) }
+    }
+	
+	boolean TO_BOOLEAN( value ) {
+		if( value instanceof Boolean ) return value 
+		return '1/y/yes/true/t'.indexOf( value.toString().toLowerCase() ) >= 0
+	}
+
+}

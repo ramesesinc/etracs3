@@ -1,0 +1,76 @@
+import com.rameses.annotations.*
+import com.rameses.eserver.*;
+import com.rameses.common.*;
+
+class SubdivisionServiceInterceptor
+{
+	@PersistenceContext('main')
+	def em
+    
+	@Service('SubdivisionService')
+	def subdSvc
+	
+	@Service('MessagingService')
+	def msgSvc
+	
+	@Service('Var')
+	def var 
+	
+	@Service('ETRACSUtilService')
+	def utilSvc
+	
+	
+	/*==============================================================
+	** LOCAL INTERCEPTORS 
+	==============================================================*/
+	@After(pattern='SubdivisionService.submitToProvince') 
+	public void interceptSubmitToProvince( evt ) {
+		def subdivision = evt.result 
+		
+		if( msgSvc.remoteConnectionActive() == false )
+			return 
+		
+		def data = [
+			subdivision 		: subdivision,
+			subdivisionlands 	: subdSvc.getSubdividedLands( subdivision.objid ),
+			affectedrpus 		: subdSvc.getAffectedRpus( subdivision.objid ),
+		]
+		msgSvc.sendMessage( 'subdivision.receive', 'Send Subdivision No. ' + subdivision.docno + ' to remote.', data  )
+	}
+	
+	void updateRemoteReceiverInfo( msg  ) {
+		def receiverid = faas.rp.provcityindex + '-' + faas.rp.munidistrictindex
+		def receivername = faas.rp.munidistrict
+		msg.receiverid = receiverid 
+		msg.receiver  = [id:receiverid, name:receivername, type:faas.lgutype ]
+    }
+	
+
+	
+	/*==============================================================
+	** REMOTE INTERCEPTORS 
+	==============================================================*/
+	@After(pattern='MessagingService.onMessage', eval="#{result.type.startsWith('subdivision')}") 
+	public void interceptOnMessage( evt ) {
+		def msg = evt.result 
+		println "SubdivisionServiceInterceptor [${msg.type}]"
+		try {
+			if( msg.type == 'subdivision.receive') 
+				createSubdivision( msg ) 
+		}
+		catch( e ) {
+			println '='*50
+            e.printStackTrace()
+            msgSvc.errorProcessing( msg, e.message )
+            throw e 
+		}
+	}
+    
+    void createSubdivision( msg ) {
+		subdSvc.createRemoteSubdivision( msg )
+		msgSvc.processedSuccessfully( msg )
+    }
+    
+}
+
+

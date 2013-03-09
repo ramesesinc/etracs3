@@ -1,0 +1,6 @@
+{
+	title: 		'Settings',
+	master: 	'default',
+	hidden:		true,
+	sortorder: 	100
+}

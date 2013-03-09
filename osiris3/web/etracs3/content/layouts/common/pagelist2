@@ -1,0 +1,39 @@
+<%
+	def searchcontent = ANUBIS.getBlock('search'); 
+	if (!PAGE.listModel) PAGE.listModel = 'listModel';
+%>
+<style>
+.pagelist2-left {width:150px;} 
+.pagelist2-right {width:100%;} 
+.pagelist2-center {padding:0;} 
+</style>
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr>
+	<td class="pagelist2-left" valign="top">
+		<table cellpadding="0" cellspacing="0" width="100%" border="0">
+		<tr>
+			<td class="pagelist-actions pagelist-option pagelist2-actions">${_actions}</td> 
+		</tr>
+		<tr> 
+			<td class="pagelist-search pagelist-option pagelist2-search">${_search}</td> 
+		</tr> 
+		</table> 
+	</td>
+	<td class="pagelist2-right" valign="top">
+		<table class="pagelist" cellpadding="0" cellspacing="0" border="0"> 
+		<tr> 
+			<td class="pagelist-center pagelist2-center"> 
+				<div class="pagelist-content">${_content}</div> 
+			</td> 
+		</tr> 
+		<tr> 
+			<td class="pagelist-footer">
+				<button r:context="${PAGE.context}" r:name="${PAGE.listModel? PAGE.listModel: 'listModel'}.moveFirst" icon="rui-button-icon12 rui-icon-navfirst12">First</button> 
+				<button r:context="${PAGE.context}" r:name="${PAGE.listModel? PAGE.listModel: 'listModel'}.movePrev"  icon="rui-button-icon12 rui-icon-navprev12">Previous</button> 
+				<button r:context="${PAGE.context}" r:name="${PAGE.listModel? PAGE.listModel: 'listModel'}.moveNext"  icon="rui-button-icon12 rui-icon-navnext12">Next</button>
+			</td> 
+		</tr> 
+		</table>	
+	</td> 
+</tr> 
+</table>   

@@ -1,0 +1,7 @@
+{
+	href:		'/entity/news/info',
+	title: 		'News', 
+	sortorder:	-100,
+	secured:	true,
+	fragment:	true
+}

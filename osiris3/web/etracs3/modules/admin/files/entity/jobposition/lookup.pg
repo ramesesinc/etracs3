@@ -1,0 +1,9 @@
+{
+	title:		'Search Job Position',
+	context:	'jobpositionlookup',
+	fragment: 	true,
+	hidden:		true,
+	master:		'fragment_lookup',
+	layout:     'common/border_layout', 
+	options:	{width:650, height:440}
+}

@@ -1,0 +1,603 @@
+import com.rameses.annotations.*
+import com.rameses.eserver.*;
+import com.rameses.common.*;
+
+class TDReportService
+{
+    @PersistenceContext('main')
+    def em
+    
+	@Service('RPTSettingService')
+	def rptSettingSvc;
+	
+    @Service('NumberService')
+    def numberSvc
+	
+	@Service('Var')
+	def var 
+	
+	@Service('DateService')
+	def dateSvc
+	
+	@Service('FAASService')
+	def faasSvc 
+    
+	
+	
+	@ProxyMethod
+	public def getTDReportName() {
+		def setting = rptSettingSvc.open()
+		if( setting.usenewtdprintout == 0 )
+			return 'tdreport_old'
+		
+		return 'tdreport'
+	}
+	
+	@ProxyMethod
+	public def getTrueCopyReportName() {
+		def setting = rptSettingSvc.open()
+		if( setting.usenewtdprintout == 0 )
+			return 'tdreport_old_truecopy'
+		
+		return 'tdreport'
+	}
+	
+    @ProxyMethod 
+    public def getReportData( faasid ) {
+		def td =[:]
+		def faas = faasSvc.open( faasid  )
+		if( ! faas ) throw new Exception('Cannot open FAAS with ID no. ' + faasid + '.')
+    	
+		buildAnnotationInfo( td, faas )
+		
+    	td.putAll( faas.info )
+    	td.putAll( faas.rp )
+    	td.putAll( faas.rpu )
+		td.dtapproved = dateSvc.format( 'MM-dd-yyyy', dateSvc.parse('yyyy-MM-dd', td.dtapproved ))
+    	td.docstate = faas.docstate
+    	td.munidistprovince = faas.rp.munidistrict + ', ' + faas.rp.provcity
+    	td.propertytype = faas.rpu.rputype 
+		td.avinwords = numberSvc.convertDouble( faas.rpu.totalav )
+		
+		if( td.titledate ) {
+			td.titledate = dateSvc.parse('yyyy-MM-dd', td.titledate )
+		}
+		
+		if( var.td_report_display_appraisedby  &&  !IS_TRUE( var.td_report_display_appraisedby)) {
+			td.appraisedby = null
+			td.appraisedbytitle = null 
+		}
+		
+		concatHousenoStreetPurok( td ) 
+		
+		
+		if( faas.rpu.rputype != 'land' ) {
+			clearRealPropertyInfo( td )
+			
+			if( faas.info.landfaastaxpayerid != faas.info.taxpayerid ) {
+				def pin = td.pin 
+				td.fullpin = pin[0 .. pin.lastIndexOf('-')] + '(' + pin[-2..-1] + ')' + '-' + td.suffix 
+			}
+		}
+		
+		//for migrated data, claimno might be null
+		if( !faas.claimno ) {
+			def result = em.sqlContext.createQuery('select claimno from faaslist where objid=?').setParameter(1, faas.objid).singleResult
+			faas.claimno = result.claimno
+		}
+		if( faas.info.txntype == 'MC' && faas.claimno != null && faas.claimno != '-'  ) {
+			td.fullpin += ' M' + (faas.claimno == '0' ? '1' : faas.claimno)
+		}
+    	
+		if( faas.rpu.rputype == 'land' ) {
+			if( var.td_report_item_format == 'BLGF' ) {
+				td.lands = buildStandardItemSummary( faas.rpu )
+			}
+			else {
+				td.lands = getLandDetails( faas.rpu )
+				td.plants = getPlantTreeDetails( faas.rpu )
+			}
+			
+			//
+			//determine if multiple area, if so set mixedarea = 1 otherwise = 0
+			//in the report display sqm for the total area in cases of mixedarea = 1
+			def uniqueareatypelist = td.lands.areatype.unique()
+			if( uniqueareatypelist.size() > 1 ) {
+				td.lands.each{ it.mixedarea = 1 }
+			}
+			else {
+				td.lands.each{ it.mixedarea = 0 }
+			}
+		}
+    	else if( faas.rpu.rputype == 'bldg' ) {
+			td.bldgdesc  	= faas.rpu.info.bldgtype.bldgtypename + ' - ' + faas.rpu.info.bldgkindbucc.bldgkindname
+			td.floorcount 	= faas.rpu.info.floorcount 
+			td.buildings 	= getBldgDetails( faas.rpu )
+		}
+    	else if( faas.rpu.rputype == 'mach' ) {
+			td.machinedesc = getMachineDescriptions( faas.rpu )
+			td.machines = getMachDetails( faas.rpu )
+		}
+    	else if( faas.rpu.rputype == 'planttree' ) {
+			td.plants = getPlantTreeDetails( faas.rpu )
+		}
+    	else if( faas.rpu.rputype == 'misc' ) {
+			td.miscdesc  = getMiscDescriptions( faas.rpu )
+			td.miscitems = getMiscDetails( faas.rpu )
+		}
+    	else throw new Exception( 'Invalid RPU Type.' )
+    	
+		def setting = rptSettingSvc.open();
+		if( setting ){
+			td.ordinanceno = setting.ordinanceno;
+			if( setting.ordinancedate ) {
+				td.ordinancedate = new java.text.SimpleDateFormat("yyyy-MM-dd").parse( setting.ordinancedate );
+			}
+		}
+		
+		if( td.docstate == 'CURRENT' || td.docstate == 'CANCELLED' ) {
+			td.appraisedby = ( td.appraisedby ? '(SGD.) ' + td.appraisedby : null )
+			td.recommendedby = ( td.recommendedby ? '(SGD.) ' + td.recommendedby : null )
+			td.approvedby = ( td.approvedby ? '(SGD.) ' + td.approvedby : null )
+		}
+		
+		if( setting.usenewtdprintout == 0 ) 
+		{
+			buildOldFormatData( td, faas, setting )
+		}
+		
+		buildCancelNote( td )
+		
+		return td;
+    }
+	
+	void buildCancelNote( td ) {
+		if( ! td.cancelnote ) {
+			td.cancelnote = 'CANCELLED BY TD NO(S). ' + td.cancelledbytdnos + ' DATED ' + td.canceldate 
+		}
+	}
+	
+	private void concatHousenoStreetPurok( def td ){
+		
+		def houseno = { 
+			return ( it.houseno ) ? "$it.houseno".toString() : ''
+		}
+		
+		def street = {
+			def strt = ''
+			if( it.street ){
+				strt = ( it.houseno && it.street ) ? ', ' : ''
+				strt += "$it.street".toString()
+			}
+			return strt
+		}
+		
+		def purok = {
+			def prk = ''
+			if( it.purok ){
+				prk = ( it.houseno || it.street ) ? ', ' : ''
+				prk += "$it.purok".toString()
+			}
+			return prk
+		}
+		
+		td.street = houseno( td ) + street( td ) + purok( td )
+	}
+	
+	void buildAnnotationInfo( td, faas ) {
+		td.annotated  = false 
+		if( IS_TRUE( faas.info.annotated ) ) {
+			td.annotated = true 
+			def annotationlist = em.sqlContext.createNamedQuery('faas:getActiveAnnotations').setParameter('faasid', faas.objid).resultList
+			td.annotations = []
+			annotationlist.each { anno ->
+				td.annotations.add( [annotationtext:anno.memoranda ])
+			}
+		}
+	}
+	
+	def buildAnnotationText( anno ) {
+		def text = ''
+		if( anno.doctype == 'mortgage' ) {
+			text += 'Mortgate for P ' + anno.loanamount + ' to the ' + anno.bank + '.'
+			text += ' This instrument executed on ' + anno.dtsigned 
+			text += ' by _______. Ratified by ' + anno.signedby + '.'
+			text += anno.signedbytitle + ' on ' + anno.dtsigned + '.'  
+		}
+		else if( anno.doctype == 'bailbond' ) {
+			text += 'Filed under Case No. ' + anno.caseno + ' on ' + anno.branchno + '.'
+		}
+		if( ! text ) text = anno.memoranda 
+		return text 
+		
+	}
+	
+	void clearRealPropertyInfo( td ) {
+		int showlandinfo =  toInt(var.td_show_landinfo_on_improvements, 1 ) 
+		if( showlandinfo == 1 ) return 
+		
+		td.titleno 		= ''
+		td.cct			= ''
+		td.cctdate		= null
+		td.surveyno		= ''
+		td.cadastrallotno = ''
+		td.blockno		= ''
+		td.north		= ''
+		td.south		= ''
+		td.east			= ''
+		td.west			= ''
+	}
+	
+	def getMachineDescriptions( machrpu ) {
+		return machrpu.info.machuses.machdetails.machinename.flatten().join(',')
+	}
+	
+	def getMiscDescriptions( miscrpu ) {
+		return miscrpu.info.miscrpuitems.miscitemname.join(',')
+	}
+    
+    private def getLandDetails( rpu ) {
+    	def data = [];
+    	def landdetails = rpu.info.landdetails;
+		landdetails.each {
+			def item = [
+				propertytype    : 'LAND',
+				classification	: rpu.classname,
+				actualuse 		: it.specificclassname,
+				specificclass 	: it.specificclassname,
+				subclass		: it.subclassname, 
+				area			: ( it.areatype == 'SQM' ? it.areasqm : it.areaha ),
+				areasqm			: it.areasqm,
+				areaha			: it.areaha,
+				areatype		: it.areatype.toLowerCase(),
+				assesslevel		: it.assesslevel,
+				marketvalue		: ( it.taxable == null || it.taxable  ? it.marketvalue : 0.0 ),
+				adjmarketvalue  : ( it.taxable == null || it.taxable  ? it.marketvalue : it.marketvalue * (-1)),
+				basemarketvalue	: ( it.taxable == null || it.taxable  ? it.basemarketvalue : 0.0 ),
+				assessedvalue	: ( it.taxable == null || it.taxable  ? it.assessedvalue : 0.0 ) ,
+				adjassessedvalue: ( it.taxable == null || it.taxable  ? it.assessedvalue : it.assessedvalue * (-1)),
+				unitvalue		: it.unitvalue,
+				basevalue		: it.basevalue,
+				adjustment		: it.adjustment,
+				taxable			: it.taxable,
+			];
+			
+			data.add( item );
+		}
+		return data; 
+    }
+	
+	List buildStandardItemSummary( rpu) {
+		def data = [];
+    	def landdetails = rpu.info.landdetails;
+		def actualusegroup = landdetails.groupBy{ it.actualusename + it.assesslevelname }
+		actualusegroup.keySet().each{ key ->
+			println 'key -> ' + key
+			def itemlist = actualusegroup[key]
+			data.add([
+				classification 	: rpu.classname,
+				actualusecode  	: itemlist[0].assesslevelcode,
+				actualuse	   	: itemlist[0].assesslevelname,
+				area     	   	: (itemlist[0].subclass.areatype == 'SQM' ? itemlist.areasqm.sum() : itemlist.areaha.sum()),
+				areatype		: itemlist[0].subclass.areatype.toLowerCase(),
+				marketvalue		: itemlist.marketvalue.sum(),
+				adjmarketvalue		: itemlist.marketvalue.sum(),
+				assesslevel		: itemlist[0].assesslevel,
+				assessedvalue	: itemlist.assessedvalue.sum(),
+				adjassessedvalue	: itemlist.assessedvalue.sum(),
+				areasqm			: itemlist.areasqm.sum(),
+				areaha			: itemlist.areaha.sum(),
+				mixedarea		: 0,
+			])
+		}
+		
+		def planttreedetails= []
+    	if( rpu.info.planttrees ) 
+			planttreedetails = rpu.info.planttrees
+		else 
+			planttreedetails = rpu.info.planttreedetails;
+		
+		//add planttree values 
+		if( planttreedetails ) {
+			data.add([
+				classification 	: 'PLANT/TREE',
+				actualusecode  	: rpu.classcode,
+				actualuse	   	: rpu.classname,
+				area     	   	: 0.0,
+				areatype		: null, 
+				marketvalue		: planttreedetails.marketvalue.sum(),
+				adjmarketvalue	: planttreedetails.marketvalue.sum(),
+				assesslevel		: planttreedetails[0].assesslevel,
+				assessedvalue	: planttreedetails.assessedvalue.sum(),
+				adjassessedvalue: planttreedetails.assessedvalue.sum(),
+				areasqm			: 0.0,
+				areaha			: 0.0,
+				mixedarea		: 0,
+			])
+		}
+		return data 
+	}
+	
+    private def getBldgDetails( rpu ) {
+    	def data = [];
+    	
+    	def bldguses = rpu.info.bldguses;
+			
+		if( rpu.info.useswornamount || rpu.info.predominant ) {
+			def item = [
+				propertytype    : 'BLDG',
+				classification	: rpu.classname,
+				actualuse 		: rpu.classname,
+				assesslevel		: rpu.info.assesslevel,
+				marketvalue		: rpu.totalmv,
+				assessedvalue	: rpu.totalav,
+				area			: rpu.totalareasqm,
+			];
+			
+			data.add( item );
+		} else {
+			bldguses.each {
+				def item = [
+					propertytype    : 'BLDG',
+					classification	: rpu.classname,
+					actualuse		: it.actualuse.actualusename,
+					actualuseid		: it.actualuse.actualuseid,
+					assesslevel		: it.assesslevel,
+					marketvalue		: it.marketvalue ,
+					basemarketvalue	: it.basemarketvalue,
+					assessedvalue	: it.assessedvalue,
+					area			: it.area,
+				];
+				
+				data.add( item );
+			}
+		}
+		
+		return data;
+    }
+    
+    private def getMachDetails( rpu ) {
+    	def data = [];
+    	
+    	def machuses = rpu.info.machuses;
+			
+		def showMachineDetails = IS_TRUE( var.td_show_machine_details)
+		println 'showMachineDetails -> ' + showMachineDetails
+		machuses.each { mu ->
+			if(  showMachineDetails ) {
+				mu.machdetails.each {
+					def item = [
+						propertytype    : 'MACH',
+						classification		: rpu.classname,
+						machine				: it.machinename,
+						actualuse			: it.machinename,
+						actualuseid			: mu.actualuse.actualuseid,
+						depreciation		: it.depreciation,
+						marketvalue			: it.marketvalue,
+						basemarketvalue		: it.basemarketvalue,
+						assesslevel			: it.assesslevel,
+						assessedvalue		: it.assessedvalue,
+						operationyear		: it.operationyear,
+						replacementcost		: it.replacementcost,
+						brand				: it.brand,
+						model				: it.model,
+					];
+					
+					data.add( item );
+				}
+			}
+			else {
+				data << [
+					propertytype    : 'MACH',
+					classification		: rpu.classname,
+					machine				: mu.machinename,
+					actualuse			: mu.actualuse.actualusename,
+					depreciation		: mu.depreciation,
+					marketvalue			: mu.marketvalue,
+					assesslevel			: mu.assesslevel,
+					assessedvalue		: mu.assessedvalue,
+					actualuseid			: mu.actualuse.actualuseid,
+					marketvalue			: mu.marketvalue,
+					basemarketvalue		: mu.basemarketvalue,
+					assesslevel			: mu.assesslevel,
+					assessedvalue		: mu.assessedvalue,
+					area				: 0.00,
+				];
+			}
+		}
+    	 
+    	return data;
+    }
+    
+    private def getPlantTreeDetails( rpu ) {
+    	def data = [];
+		def planttreedetails= []
+    	if( rpu.info.planttrees ) 
+			planttreedetails = rpu.info.planttrees
+		else 
+			planttreedetails = rpu.info.planttreedetails;
+			
+		if( planttreedetails ) {
+			def planttreedetail = planttreedetails[0]
+			if( planttreedetail ) {
+				data.add([
+					propertytype    : 'PLANT/TREE',
+					classification 		: 'PLANT/TREE',
+					actualuse			: planttreedetail.assesslevelname,
+					planttreename		: planttreedetail.assesslevelname,
+					marketvalue			: calculateListFieldSum( planttreedetails, 'marketvalue', 0.0),
+					assesslevel			: planttreedetail.assesslevel,
+					assessedvalue		: calculateListFieldSum(planttreedetails, 'assessedvalue', 0.0), 
+				])
+			}
+		}
+		return data;
+    }
+	
+	def calculateListFieldSum( list, field, defvalue  ) {
+		try {
+			return list."$field".sum()
+		}
+		catch ( e ) {
+			return defvalue 
+		}
+	}
+    
+    private def getMiscDetails( rpu ) {
+    	def data = [];
+    	
+    	def miscrpuitems = rpu.info.miscrpuitems;
+			
+		miscrpuitems.each {
+			def item = [
+				propertytype    : 'MISC',
+				classification		: rpu.classname,
+				miscitem			: it.miscitemname,
+				actualuse			: rpu.info.actualusename,
+				marketvalue			: it.marketvalue,
+				basemarketvalue		: it.basemarketvalue,
+				assesslevel			: it.assesslevel,
+				assessedvalue		: it.assessedvalue
+			];
+			
+			data.add( item );
+		}
+    	
+    	return data;
+    }
+    
+	int toInt( val, defval  ) {
+		try {
+			return Integer.parseInt( val ) 
+		}
+		catch( e ) {
+			return defval
+		}
+	}
+	
+	boolean IS_TRUE( value ) {
+		if( value instanceof Boolean ) 
+			return value 
+		value = value +''
+		if( '1/yes/true/y/t'.indexOf(value) >= 0 )
+			return true
+		return false 
+	}
+
+	
+	/******************************************************
+		* Old TD Report Format Support
+	*******************************************************/
+	
+	private void buildOldFormatData( td, faas, setting ) 
+	{
+		td.prevlandav = 0.00
+		td.previmprovementav = 0.00
+		td.totaladjustment = 0.00
+		td.rollyear = 0 //ask tommorow
+		
+		if( faas.rpu.rputype == 'land' ) 
+		{
+			if( td.prevav ) td.prevlandav = td.prevav
+			td.assessmentitems = td.lands
+			td.assessmentitems.each { it.kind = 'LAND' }
+			buildLand1and2Infos( td, faas, setting )
+		}
+		else 
+		{
+			if( td.prevav ) td.previmprovementav = td.prevav
+			
+			if( faas.rpu.rputype == 'bldg' ) {
+				td.assessmentitems = td.buildings
+				td.assessmentitems.each { it.kind = 'BLDG' }
+				td.bldgitemamv = td.totalmv
+				td.bldgtotalamv = td.totalmv
+				td.bldgitemfloorarea = td.totalareasqm
+				td.bldgitemfloorcount = td.floorcount
+				td.bldgitemconstructionmaterials = faas.rpu.bldgstructures.findAll{ it.materialname }*.materialname.unique().join(',')
+			}
+			else if( faas.rpu.rputype == 'mach' ) {
+				td.assessmentitems = td.machines
+				td.assessmentitems.each { 
+					it.kind = 'MACH' 
+					it.description = it.machine
+					if( it.brand ) it.description += ' - ' + it.brand
+					if( it.model ) it.description += ' ' + it.model
+						
+				}
+				
+				td.machtotalmv = td.totalbmv
+				td.machtotalamv = td.totalmv
+			}
+			else if( faas.rpu.rputype == 'planttree' ) {
+				td.assessmentitems = td.plants
+				td.assessmentitems.each { it.kind = 'PLANT/TREE' }
+			}
+			else if( faas.rpu.rputype == 'misc' ) {
+				td.assessmentitems = td.miscitems
+				td.assessmentitems.each { it.kind = 'MISC' }
+			}
+		}
+		
+		summarizeItems( td )
+	}
+	
+	private void buildLand1and2Infos( td, faas, setting )
+	{
+		td.land1s = []		
+		td.land2s = []
+		
+		if( setting.landreportbasedonactualuse == 1 )
+		{
+			td.lands.each {
+				if( isInLand1s( setting, it.actualuseid ) )
+					td.land1s.add( it )
+				else
+					td.land2s.add( it )
+			}
+		}
+		else
+		{
+			if( isInLand1s( setting, td.classid ) )
+				td.land1s.addAll( td.lands )
+			else 
+				td.land2s.addAll( td.lands )
+		}
+		
+		td.land1totalmv = td.land1s*.basemarketvalue.sum()
+		td.land1totalamv = td.land1s*.marketvalue.sum()
+		
+		td.land2totalmv = td.land2s*.basemarketvalue.sum()
+		td.land2totalamv = td.land2s*.marketvalue.sum()
+	}
+	
+	private boolean isInLand1s( setting, classid ) 
+	{
+		return setting.propertyclassifications.find { it.objid == classid } ? true : false
+	}
+	
+	private void summarizeItems( td )
+	{
+		def newitems = [:]
+		
+		td.assessmentitems.each {
+			def item = newitems[it.actualuseid]
+			if( item ) {
+				item.marketvalue += it.marketvalue
+				item.assessedvalue += it.assessedvalue
+			}
+			else {
+				newitems[it.actualuseid] = [
+					kind			: it.kind,
+					actualuse		: it.actualuse,
+					marketvalue		: it.marketvalue,
+					assesslevel 	: it.assesslevel,
+					assessedvalue	: it.assessedvalue,
+				]
+			}
+		}
+		
+		td.assessmentitems = newitems.values() as List
+	}
+	
+}

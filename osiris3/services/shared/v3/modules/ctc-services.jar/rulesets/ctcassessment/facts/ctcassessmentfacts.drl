@@ -1,0 +1,37 @@
+ package ctc.assessment.facts   
+ 
+ declare IndividualFact    
+	profession:  String    
+	citizenship: String    
+	gender:   String    
+	civilstatus: String    
+	seniorcitizen:  Boolean    
+	newbusiness: Boolean    
+	annualsalary: Double    
+	businessgross: Double    
+	propertyincome: Double   
+end   
+
+declare CorporateFact    
+	orgtype: String    
+	realpropertyav: Double    
+	businessgross: Double  
+	newbusiness: Boolean    	
+end   
+
+declare CTCFact    
+	barangayid: String    
+	year:       Integer    
+	qtr:        Integer    
+	month:      Integer    
+	day:        Integer    
+	additional: Boolean    
+	basictax:   Double    
+	salarytax:  Double    
+	businessgrosstax:  Double    
+	propertyincometax: Double    
+	additionaltax:     Double    
+	interest: Double    
+	amtdue:  Double   
+end  
+

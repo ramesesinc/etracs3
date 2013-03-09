@@ -1,0 +1,41 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import com.rameses.invoker.client.*
+
+class InboundMessageTask
+{
+   
+    @Service('DynamicHttpInvokerService')
+    def invokerSvc
+    
+	@Service('MessagingService')
+    def msgSvc
+    
+	def STATE_UNREAD = 'UNREAD'
+	def STATE_READ   = 'READ'
+	
+	def INBOX_SCHEMA_NAME = 'messaging:inbox' 
+	def OUTBOX_SCHEMA_NAME = 'messaging:outbox' 
+	
+	
+	@ProxyMethod
+	public def fetchMessage( task ) {
+        try {
+            def params = [ receiver : msgSvc.getDefaultSender(), ]
+            def msglist = invokerSvc.invokeRemoteService( 'RemoteOutboxService', 'fetchMessage', [params] as Object[])
+			msglist.each{ msg ->
+				println 'Processing message from ' + msg.sender  
+				//check if msg has already been fetched, check both inbox and processedinbox 
+				def oldmsg = msgSvc.getInboxMessage( msg.objid )
+				if( !oldmsg ) {
+					msgSvc.saveInboxMessage( msg )
+				}
+				invokerSvc.invokeRemoteService( 'RemoteOutboxService', 'fetchSuccess', [msg.objid] as Object[])
+			}
+        }
+        catch ( e ) {
+			println 'Cannot connect to remote outbox.'
+        }
+        return true
+	}    		
+}

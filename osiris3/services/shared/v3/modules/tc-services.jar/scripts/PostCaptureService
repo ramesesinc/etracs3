@@ -1,0 +1,125 @@
+import com.rameses.common.*
+import com.rameses.annotations.*
+import java.rmi.server.UID
+
+class PostCaptureService
+{
+	@PersistenceContext('main')
+	def em
+	
+	@Service('LogService')
+	def logService
+	
+	@Service('DateService')
+	def dateService
+	
+	@Service('ETRACSUserService')
+	def userSvc
+	
+	def SCHEMA = 'postcapture:postcapture'
+	def SCHEMAVERSION = '1.0'
+	
+	def DRAFT_STATE = 'DRAFT'   
+	def POSTED_STATE = 'POSTED'
+	
+	@ProxyMethod
+	public List getList( searchText, param ) {
+		searchText = ( searchText ? searchText+'%' : '%' )
+		return em.sqlContext.createNamedQuery('postcapture:getList')
+				.setParameter( 'collectorname',searchText)
+				.setFirstResult( param._start )
+				.setMaxResults( param._limit )
+				.resultList
+	}
+	
+	@ProxyMethod
+	public def create( collector, capturedbyid  ) {
+		
+		def etracscollector = userSvc.getCollector( collector.objid )
+		def entity = [
+			objid 			: 'PC' + new UID(),
+			schemaname 		: SCHEMA,
+			schemaversion 	: SCHEMAVERSION,
+            docstate       : DRAFT_STATE,
+			collectorid    : etracscollector.objid,
+			collectorname  : etracscollector.name,
+			collectortitle : etracscollector.jobtitle,
+            summaries      : loadCapturedReceiptSummaries( collector.objid, capturedbyid )
+        ]
+		//add validation checks
+		entity.totalcount = entity.summaries.sum( {it.icount} )
+		entity.amount = entity.summaries.sum( {it.amount} )
+		if( ! entity.summaries) throw new Exception('There are no unposted captured receipts for this collector.')
+		return entity 
+	}
+		
+	@ProxyMethod
+	public List loadCapturedReceiptSummaries( collectorid, capturedbyid ) {
+		List summaries = [] 
+		if( capturedbyid && collectorid == capturedbyid ) {
+			summaries = em.sqlContext.createNamedQuery('postcapture:getCapturedReceiptsSummaries').setParameter('collectorid', collectorid).resultList
+		}
+		else {
+			summaries = em.sqlContext.createNamedQuery('postcapture:getCapturedReceiptsSummariesBySubcollector')
+							.setParameters( [collectorid:collectorid, capturedbyid:capturedbyid] )
+							.resultList
+		}
+		return summaries
+	}
+	
+	@ProxyMethod
+	public List getCapturedReceipts( collectorid, capturedbyid, afcontrolid) {
+		if( ! afcontrolid ) return []
+		if( capturedbyid && collectorid == capturedbyid ) {
+			return em.sqlContext.createNamedQuery('postcapture:getCapturedReceipts')
+						.setParameters([collectorid:collectorid, afcontrolid:afcontrolid])
+						.resultList
+		}
+		else {
+			return em.sqlContext.createNamedQuery('postcapture:getCapturedReceiptsBySubcollector')
+						.setParameters([collectorid:collectorid, capturedbyid:capturedbyid, afcontrolid:afcontrolid]).resultList
+		}
+	}
+	
+	@ProxyMethod
+	public def post( entity, capturedbyid  ) {
+		entity.docstate = POSTED_STATE
+		entity.dtposted = new Date()
+		validate( entity, capturedbyid  )	
+		em.create( entity.schemaname, entity )		
+		if( capturedbyid && capturedbyid == entity.collectorid ) {
+			em.sqlContext.createNamedExecutor('postcapture:postCapturedReceiptList')
+					.setParameters([postcaptureid:entity.objid,collectorid:entity.collectorid])
+					.execute()
+		}
+		else {
+			em.sqlContext.createNamedExecutor('postcapture:postCapturedReceiptListBySubcollector')
+						.setParameters([postcaptureid:entity.objid,collectorid:entity.collectorid, capturedbyid:capturedbyid])
+						.execute()
+		}
+		return entity 
+	}
+	
+	@ProxyMethod
+	public List getCollectorListByAssignedTo( assignedtoid ) {
+		def collectorIds = em.sqlContext.createNamedQuery('postcapture:getCollectorIdByAssignedTo')
+								.setParameter('assignedtoid', assignedtoid)
+								.resultList 
+		def collectors = []
+		collectorIds.each{
+			collectors.add( userSvc.getCollector(it.collectorid) ) 
+		}
+		return collectors
+	}
+	
+	void validate( entity, capturedbyid ) {
+		em.validate( entity.schemaname, entity )
+		def summaries = loadCapturedReceiptSummaries( entity.collectorid, capturedbyid )
+		def totalcount = summaries.sum( {it.icount} )
+		def totalamount = summaries.sum( {it.amount} )
+		if( entity.totalcount != totalcount ) throw new Exception('A new captured receipt was added.\nPlease redo the transaction.')
+		if( entity.amount != totalamount ) throw new Exception('Some amounts were modified.\nPlease redo the transaction.')
+	}
+	
+	
+}

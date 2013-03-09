@@ -1,0 +1,7 @@
+{
+	title: 		'Tools',
+	pagetitle: 	'System Tools',
+	master: 	'default',
+	secured:	true,
+	sortorder: 	100
+}

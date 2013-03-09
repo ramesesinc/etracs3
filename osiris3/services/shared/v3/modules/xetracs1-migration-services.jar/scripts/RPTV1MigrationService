@@ -1,0 +1,187 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import com.rameses.util.*
+import com.rameses.sql.*
+import java.util.concurrent.*;
+import java.sql.*
+
+class RPTV1MigrationService
+{
+    @PersistenceContext("etracsv1")
+    def em1;
+    
+    @PersistenceContext("main")
+    def em2;
+	
+	@PersistenceContext("system")
+    def emsys;
+	
+	@Service('CommonMigrationService')
+	def commSvc;
+    
+    @Service('NumberService')
+    def numSvc
+    
+	@ProxyMethod 
+	public def getObjidList( version, objname ) {
+		return commSvc.getObjidList(version, objname, 'rpt')
+	} 
+	
+	@ProxyMethod()
+	public def insertObject( version, objname, list )
+	{
+		return commSvc.insertObject(version, objname, list, 'rpt')
+	}
+	
+	@ProxyMethod()
+	public def insertObjectById( version, objname, objid )
+	{
+		return commSvc.insertObjectById(version, objname, objid, 'rpt')
+	}
+	
+	
+	@ProxyMethod()
+	public void deleteTargetDB( objname )
+	{
+		em2.sqlContext.createExecutor("""
+			delete from $objname
+		""").execute();
+	}
+	
+	@ProxyMethod
+	public void updateBldgAdditionalItem() {
+		def fhandler = { item ->
+			item.expr = item.expr.replace('$F{', '')
+			item.expr = item.expr.replace('$P{', '')
+			item.expr = item.expr.replace('}', '')
+			
+			em2.sqlContext.createExecutor('''
+				update bldgadditionalitem set expr = $P{expr} where objid = $P{objid}
+			''')
+			.setParameters( item )
+			.execute()
+		}
+		
+		def qry = em2.sqlContext.createQuery("select * from bldgadditionalitem")
+		qry.fetchHandler = new CustomFetchHandler( handler: fhandler )
+		qry.resultList
+	}
+	
+	@ProxyMethod
+	public void updateBldgAssessLevel() {
+		def fhandler = { item ->
+			item.ranges = em1.sqlContext.createQuery('''
+					select 
+						mvFrom as mvfrom, 
+						mvTo as mvto,
+						rate 
+					from BldgAssessLevelRange
+					where bldgassesslevelid = $P{bldgassesslevelid}
+					order by mvfrom 
+			''')
+			.setParameter('bldgassesslevelid', item.objid )
+			.resultList 
+			
+			em2.sqlContext.createExecutor('''
+				update bldgassesslevel set ranges = $P{ranges} where objid = $P{objid}
+			''')
+			.setParameter('ranges', em1.serializer.write(item.ranges))
+			.setParameter('objid', item.objid )
+			.execute()
+		}
+		
+		def qry = em2.sqlContext.createQuery("select * from bldgassesslevel")
+		qry.fetchHandler = new CustomFetchHandler( handler: fhandler )
+		qry.resultList
+	}
+	
+	@ProxyMethod
+	public void updateBldgKindBucc() {
+		def fhandler = { item ->
+			println 'updating ' + item.bldgkindname
+			def extended = [
+				bldgkind: [
+					objid	 : item.bldgkindid,
+					bldgkind : item.bldgkindname,
+					bldgcode : item.bldgkindcode,
+				]
+			]
+			em2.sqlContext.createExecutor('''
+				update bldgkindbucc set extended = $P{extended} where objid = $P{objid}
+			''')
+			.setParameter('extended', em2.serializer.write(extended))
+			.setParameter('objid', item.objid )
+			.execute()
+		}
+		
+		def qry = em2.sqlContext.createQuery("select * from bldgkindbucc")
+		qry.fetchHandler = new CustomFetchHandler( handler: fhandler )
+		qry.resultList
+	}
+	
+	@ProxyMethod
+	public void updatePlantTreeRySetting() {
+		def fhandler = { setting ->
+			setting.planttreeunits = em1.sqlContext.createQuery('''
+					select 
+						tu.rysettingid as planttreerysettingid,
+						tu.treeid as planttreeid,
+						t.code as planttreecode,
+						t.description as planttreename
+					from TreeUnit tu
+						inner join Tree t on tu.treeid = t.objid 
+					where tu.rysettingid = $P{parentid}
+			''')
+			.setParameter('parentid', setting.objid)
+			.resultList 
+			
+			setting.assesslevels = em1.sqlContext.createQuery('''
+					select 
+						objid, code, description as name, assessLevel as rate, previd 
+					from TreeAssessLevel
+					where rysettingid = $P{parentid}
+			''')
+			.setParameter('parentid', setting.objid)
+			.resultList 
+			
+			
+			em2.sqlContext.createExecutor('''
+				update planttreerysetting set 
+					assesslevels = $P{assesslevels},
+					planttreeunits = $P{units} 
+				where objid = $P{objid}
+			''')
+			.setParameter('assesslevels', em1.serializer.write(setting.assesslevels))
+			.setParameter('units', em1.serializer.write(setting.planttreeunits))
+			.setParameter('objid', setting.objid )
+			.execute()
+		}
+		
+		def qry = em2.sqlContext.createQuery("select * from planttreerysetting")
+		qry.fetchHandler = new CustomFetchHandler( handler: fhandler )
+		qry.resultList
+	}
+	
+	
+}	
+
+
+
+
+
+
+
+
+//====== helper class ==========
+
+class CustomFetchHandler extends MapFetchHandler {
+	
+	def handler;
+
+	public Object getObject(ResultSet rs) throws Exception {
+		def data = super.getObject( rs );
+		if( handler ) handler( data );
+		return null;
+	}
+	
+}

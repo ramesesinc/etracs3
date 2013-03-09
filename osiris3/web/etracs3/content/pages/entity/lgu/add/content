@@ -1,0 +1,46 @@
+<script>
+	\$put( "${PAGE.context}", new function() {
+		this.entity = {};
+		this.saveHandler;
+		this.lgutype;
+		
+		this.save = function() {
+			if( this.saveHandler )
+				this.saveHandler( this.entity );
+				
+			this.entity = {};
+			\$('#idxno').focus();
+		}
+		
+		this.cancel = function() {
+			if (confirm("Are you sure you want to close this window?")) 
+				return '_close';
+		} 
+	});
+</script>
+
+<div r:dockTo="footer-actions">
+	<button r:context="${PAGE.context}" r:name="save" icon="rui-icon rui-icon-save">Save</button>
+	<button r:context="${PAGE.context}" r:name="cancel" icon="rui-icon rui-icon-cancel" r:immediate="true">Close</button>
+</div> 
+
+<table cellpadding="0" cellspacing="0" width="100%" height="100%">
+<tr>
+	<td valign="top">
+		<table class="dataform" cellpadding="0" cellspacing="0">
+		<tr> 	
+			<td>Index No.: </td> 
+			<td> 
+				<input type="text" r:context="${PAGE.context}" r:name="entity.indexno" r:required="true" style="width:100px;"/>
+			</td> 	
+		</tr>
+		<tr> 	
+			<td>Name: </td> 
+			<td> 
+				<input type="text" r:context="${PAGE.context}" r:name="entity.lguname" r:required="true" style="width:300px;"/>
+			</td> 	
+		</tr>
+		</table> 	
+	</td> 
+</tr> 
+</table> 

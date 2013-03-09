@@ -1,0 +1,1 @@
+<button r:context="${PAGE.context}" r:name="addNew" icon="rui-icon rui-icon-create">Add</button> 

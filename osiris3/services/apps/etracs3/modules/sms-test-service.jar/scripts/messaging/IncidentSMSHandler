@@ -1,0 +1,33 @@
+
+import com.rameses.annotations.*;
+import com.rameses.server.common.*;
+import com.rameses.http.*;
+
+class IncidentSMSHandler
+{
+	@Service(value="SMSService", connection="etracsorg") 
+	def smsSvc;
+	
+
+	@PersistenceContext('bukidnon')
+	def em 
+	
+	@OnMessage(value="sms", eval="data.msg.toUpperCase().startsWith('INC:')") 
+	public void receive(def param) 
+	{
+		System.out.println('Receiving message -> ' + param.msg )
+		em.create('incident', parseIncidentMsg( param.msg ) )
+	}
+
+
+	def parseIncidentMsg( msg ) {
+	    def tokens = msg.tokenize(' ')
+	    return [
+	        objid        : 'I' + new java.rmi.server.UID(),
+	        incidenttype : tokens[0].tokenize(':')[1],
+	        purok        : tokens[1],
+	        detail       : tokens[2],
+	        dtreceived	 : new Date(),
+	    ]
+	}
+}

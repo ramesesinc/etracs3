@@ -1,0 +1,23 @@
+<schema>
+	<element name="certification" tablename="certification">
+		<field name="objid" primary="true"/>
+		<field name="opener" required="true"/>
+		<field name="reftype" required="true"/>
+		<field name="txnno" required="true"/>
+		<field name="txndate" required="true" />
+		<field name="barcode" />
+		<field name="requestedbyid" required="true"/>
+		<field name="requestedby" required="true"/>
+		<field name="requestedbyaddress" required="true"/>
+		<field name="createdbyid" required="true"/>
+		<field name="createdby" required="true"/>
+		<field name="createdbytitle" required="true"/>
+		<field name="certifiedby" required="true"/>
+		<field name="certifiedbytitle" required="true"/>
+		<field name="orid" />
+		<field name="orno" required="true"/>
+		<field name="ordate" required="true"/>
+		<field name="oramount" required="true" type="decimal"/>
+		<complex name="info" merge="true" serializer="default" required="false" />
+	</element>
+</schema>

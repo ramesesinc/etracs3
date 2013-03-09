@@ -1,0 +1,8 @@
+<script>
+		
+	\$put( "${PAGE.context}", new function() { 
+		
+	});
+	
+</script>
+

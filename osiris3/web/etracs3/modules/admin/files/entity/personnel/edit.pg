@@ -1,0 +1,8 @@
+{
+	title: 		'Personnel Info',
+	context:	'personnel_edit',
+	fragment: 	true,
+	hidden:		true,	
+	master:		'fragment_popup_crud',
+	options: 	{width:600, height:400}
+}

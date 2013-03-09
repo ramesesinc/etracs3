@@ -1,0 +1,29 @@
+<%
+	def path = OPTIONS.value;
+	if (!path) OPTIONS.path;
+	if (!path) path = PAGE.path;
+
+	def results = new StringBuffer(); 	
+	if (path) 
+	{
+		def items = ANUBIS.getFolder(path)?.allowedChildren;
+		if (items) 
+		{ 
+			items.each { 
+				def accept = false; 
+				if (OPTIONS.tag) 
+					accept = (OPTIONS.tag==it.tag);
+				else 
+					accept = true; 
+			
+				if (accept && it.action) { 
+					if (results.length()>0) results.append(", ");
+					if (!it.caption) it.caption = it.title;
+					
+					results.append("{context:\"${it.context}\", caption:\"${it.caption}\", action:\"${it.action}\"}");
+				} 
+			} 
+		}
+	} 
+	print "[${results}];"; 
+%>

@@ -1,0 +1,27 @@
+<%
+	//PAGE.imports << "/themes/${PAGE.theme}/css/admin.css";
+%>
+
+<script>
+	\$put(
+		'admin',
+		new function() 
+		{
+			this.onload = function() 
+			{
+				<%
+				def inbox_menus = ANUBIS.getFolder("/tools_menu").allowedChildren.findAll{ it.hidden != true };	
+				if( inbox_menus ) 
+				{
+					def menu = inbox_menus[0]; 
+					if (menu.href) menu = ANUBIS.getFileInfo(menu.href+'.pg');	
+					
+					println "if( !location.hash ) location.hash='${menu.name}';";
+				}
+				%>
+			};
+		}
+	);
+</script>
+
+<div id="content"></div>

@@ -1,0 +1,323 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import com.rameses.util.*
+import com.rameses.sql.*
+import java.util.concurrent.*;
+import java.sql.*
+
+class RPTV1etracsv1_rptService
+{
+    @PersistenceContext("etracsv1")
+    def em1;
+    
+    @PersistenceContext("main")
+    def em2;
+	
+	@PersistenceContext("system")
+    def emsys;
+	
+	@Service('CommonMigrationService')
+	def commSvc;
+    
+    @Service('NumberService')
+    def numSvc
+	
+	@Service('ETRACSUtilService')
+	def utilSvc
+    
+	@ProxyMethod 
+	public def getObjidList( version, objname ) {
+		return commSvc.getObjidList(version, objname, 'rpt')
+	} 
+	
+	@ProxyMethod()
+	public def insertObject( version, objname, list )
+	{
+		return commSvc.insertObject(version, objname, list, 'rpt')
+	}
+	
+	@ProxyMethod()
+	public void deleteTargetDB( objname )
+	{
+		em2.sqlContext.createExecutor("""
+			delete from $objname
+		""").execute();
+	}
+	
+	@ProxyMethod
+	public void insertPin() {
+		def fhandler = { pin ->
+			em2.sqlContext.createNamedExecutor('etracsv1_rpt:pin_insert')
+				.setParameters( pin )
+				.execute()
+		}
+		
+		def qry = em1.sqlContext.createNamedQuery('etracsv1_rpt:pin_list')
+		qry.fetchHandler = new CustomFetchHandler( handler: fhandler )
+		qry.resultList
+	}
+	
+	@ProxyMethod
+	public def getFaasIds( type ) {
+		return em1.sqlContext.createNamedQuery('etracsv1_rpt:getFaasObjid_' + type)
+				   .resultList;
+	}
+	
+	@ProxyMethod
+	public def insertFaas( objid, lgupin ) {
+		def msg = 'Successfully processed' 
+		try{
+			println "process objid -> " + objid;
+			def faas = em1.sqlContext.createNamedQuery('etracsv1_rpt:getFaas')
+							.setParameter('objid', objid ).singleResult
+			
+			faas.previousfaases = []
+			faas.attachments = []
+			
+			faas.info = em1.sqlContext.createNamedQuery('etracsv1_rpt:getFaasInfo')
+							.setParameter('objid', objid ).singleResult
+							
+			faas.info.datacapture = utilSvc.toBoolean( faas.info.datacapture, true)
+			faas.info.autonumber = utilSvc.toBoolean( faas.info.autonumber, false)
+			faas.info.annotated = utilSvc.toBoolean( faas.info.annotated, false)
+							
+			faas.rpu = buildRpu( objid )
+			
+			faas.rp = em1.sqlContext.createNamedQuery('etracsv1_rpt:getRealProperty')
+							.setParameter('objid', objid )
+							.setParameter('lgupin', lgupin )
+							.singleResult
+							
+			def extended = em1.sqlContext.createNamedQuery('etracsv1_rpt:getExtendedInfo')
+							.setParameter('lgupin', lgupin )
+							.setParameter('objid', objid)
+							.singleResult
+							
+			if( extended ) faas.putAll( extended )
+			
+			em2.validate( faas.schemaname, faas )
+			em2.create(faas.schemaname, faas )
+			em2.create('faas:faaslist', faas )
+			println "done ... " ;
+		} catch(e) {
+			println '[ERROR]:' +e.message;
+			msg = 'Error -> ' + e.message
+		}
+		return msg 
+	}
+	
+	
+	@ProxyMethod
+	public def buildRpu( faasid ) {
+		def rpu = em1.sqlContext.createNamedQuery('etracsv1_rpt:getRpu')
+						.setParameter('objid', faasid)
+						.singleResult 
+		if( ! rpu ) throw new Exception('TD No. ' + tdno + ' does not exists.')
+		
+		rpu.taxable = utilSvc.toBoolean(rpu.taxable, true)
+
+		if( 'land'.equals( rpu.rputype ) ) {
+			buildLandRpu( rpu ) 
+		}
+		else if( 'bldg'.equals( rpu.rputype ) ) {
+			buildBldgRpu( rpu ) 
+		}
+		else if( 'mach'.equals( rpu.rputype ) ) {
+			buildMachRpu( rpu ) 
+		}
+		else if( 'plant'.equals( rpu.rputype ) ) {
+			buildPlantTreeRpu( rpu ) 
+		}
+		else if( 'misc'.equals( rpu.rputype ) ) {
+			buildMiscRpu( rpu ) 
+		}
+		else {
+			throw new Exception("RPU Type ${rpu.rputype} is not defined.")
+		}
+		
+		
+		em2.sqlContext.createNamedExecutor('etracsv1_rpt:updateRpuInfo')
+						.setParameter('faasid', rpu.faasid )
+						.setParameter('rpu', em2.serializer.write( rpu ))
+						.execute()
+		return rpu 
+	}
+	
+	def buildLandRpu( rpu ){
+		rpu.info = em1.sqlContext.createNamedQuery('etracsv1_rpt:getLandInfo')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		
+		rpu.info.swornstatement = utilSvc.toBoolean(rpu.info.swornstatement, false)
+		
+		rpu.info.landdetails = em1.sqlContext.createNamedQuery('etracsv1_rpt:getLandDetails')
+						.setParameter('rpuid', rpu.objid)
+						.resultList
+						.each{
+							it.taxable = utilSvc.toBoolean(it.taxable, true)
+							if( ! it.actualuseadjustment ) it.actualuseadjustment = 0.0
+							it.landadjustments = []
+							it.adjustments = []
+							it.subclass = em1.sqlContext.createNamedQuery('etracsv1_rpt:getSubclassInfo')
+												.setParameter('objid',it.objid).singleResult
+						}
+						
+		rpu.info.landtotal = em1.sqlContext.createNamedQuery('etracsv1_rpt:getLandTotal')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		
+		rpu.info.planttrees = em1.sqlContext.createNamedQuery('etracsv1_rpt:getPlantTrees')
+						.setParameter('rpuid', rpu.objid)
+						.resultList 
+						
+		rpu.info.planttotal = em1.sqlContext.createNamedQuery('etracsv1_rpt:getPlantTotal')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		if( ! rpu.info.planttotal ) {
+			rpu.info.planttotal = [bearing:0.0, nonbearing:0.0]
+		}
+		else  {
+			rpu.info.planttotal.bearing = rpu.info.planttotal.bearing * 1.0
+			rpu.info.planttotal.nonbearing = rpu.info.planttotal.nonbearing * 1.0
+		}
+						
+		rpu.info.adjustments = em1.sqlContext.createNamedQuery('etracsv1_rpt:getLandAdjustments')
+						.setParameter('rpuid', rpu.objid)
+						.resultList.each {
+							it.params = []
+						}
+		return rpu 
+	}
+	
+	
+	def buildBldgRpu( rpu ){
+		rpu.info = em1.sqlContext.createNamedQuery('etracsv1_rpt:getBldgInfo')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		rpu.info.swornstatement = utilSvc.toBoolean(rpu.info.swornstatement, false)
+		rpu.info.useswornamount = utilSvc.toBoolean(rpu.info.useswornamount, false)
+		rpu.info.percentcompleted = 100.0 
+						
+		rpu.info.bldgtype = em1.sqlContext.createNamedQuery('etracsv1_rpt:getBldgType')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		rpu.info.bldgtype.depreciations = []
+		rpu.info.bldgtype.multistoreyadjustments = [] 
+		
+		rpu.info.bldgkindbucc = em1.sqlContext.createNamedQuery('etracsv1_rpt:getBldgKindBucc')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		
+		def bldguses = em1.sqlContext.createNamedQuery('etracsv1_rpt:getBldgUses')
+						.setParameter('rpuid', rpu.objid)
+						.resultList
+						
+		bldguses.each{ bu ->
+			bu.depreciationvalue = bu.depreciationvalue ? (bu.depreciationvalue * 1.0) : 0.0
+			
+			bu.actualuse = em1.sqlContext.createNamedQuery('etracsv1_rpt:getBldgActualUseInfo')
+								.setParameter('objid', bu.objid)
+								.singleResult 
+			bu.actualuse.ranges = em1.sqlContext.createNamedQuery('etracsv1_rpt:getBldgAssessLevelRange')
+									.setParameter('objid', bu.objid)
+									.resultList
+								
+			def floors = em1.sqlContext.createNamedQuery('etracsv1_rpt:getFloors')
+								.setParameter('bldguseid', bu.objid )
+								.resultList 
+			floors.each{ floor ->
+				floor.additionalitems = em1.sqlContext.createNamedQuery('etracsv1_rpt:getBldgAddlItems')
+											.setParameter('floorid', floor.objid )
+											.resultList.each {
+												it.params = []
+											}
+				floor.unitvalue = floor.basevalue;
+			}
+			bu.floors = floors 
+		}
+						
+		rpu.info.bldguses = bldguses
+		
+		rpu.info.bldgstructures = em1.sqlContext.createNamedQuery('etracsv1_rpt:getStructures')
+						.setParameter('rpuid', rpu.objid)
+						.resultList
+		
+		return rpu 
+	}
+	
+	def buildMachRpu( rpu ){
+		rpu.info = [:]
+		
+		def machuses = em1.sqlContext.createNamedQuery('etracsv1_rpt:getMachUses')
+							.setParameter('rpuid', rpu.objid)
+							.resultList
+							
+		machuses.each { machuse ->
+			machuse.actualuse = em1.sqlContext.createNamedQuery('etracsv1_rpt:getMachActualUse')
+								.setParameter('rpuid', rpu.objid)
+								.setParameter('actualuseid', machuse.actualuseid )
+								.singleResult 
+								
+			def machdetails = em1.sqlContext.createNamedQuery('etracsv1_rpt:getMachDetails')
+								.setParameter('machuseid', machuse.objid )
+								.resultList
+			
+			machuse.machdetails = machdetails
+		}
+		
+		rpu.info.machuses = machuses 
+		return rpu 
+	}
+
+	
+	def buildPlantTreeRpu( rpu ){
+		rpu.info = em1.sqlContext.createNamedQuery('etracsv1_rpt:getPlantTreeInfo')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		
+		rpu.info.planttreedetails = em1.sqlContext.createNamedQuery('etracsv1_rpt:getPlantTrees')
+						.setParameter('rpuid', rpu.objid)
+						.resultList 
+		
+		return rpu 
+	}
+	
+	def buildMiscRpu( rpu ){
+		rpu.info = em1.sqlContext.createNamedQuery('etracsv1_rpt:getMiscInfo')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		
+		rpu.info.miscrpuitems = em1.sqlContext.createNamedQuery('etracsv1_rpt:getMiscItems')
+						.setParameter('rpuid', rpu.objid)
+						.resultList.each {
+							it.params = []
+						}
+		
+		return rpu 
+	}
+	
+	
+	
+	
+}	
+
+
+
+
+
+
+
+
+//====== helper class ==========
+
+class CustomFetchHandler extends MapFetchHandler {
+	
+	def handler;
+
+	public Object getObject(ResultSet rs) throws Exception {
+		def data = super.getObject( rs );
+		if( handler ) handler( data );
+		return null;
+	}
+	
+}

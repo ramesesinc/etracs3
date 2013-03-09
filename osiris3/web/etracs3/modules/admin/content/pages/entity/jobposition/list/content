@@ -1,0 +1,159 @@
+<%
+	def JOBPOSITION = ANUBIS.getFileInfo( '/'+MODULE.name+'/entity/jobposition/info.pg' );
+	def JOBPERMISSION = ANUBIS.getFileInfo( '/'+MODULE.name+'/entity/jobposition/permissions.pg' );
+%>
+<script>
+	@register( JOBPOSITION.path )
+	@register( JOBPERMISSION.path )
+	
+	\$put( "$PAGE.context", new function() {
+		var self = this;
+		var svc = Service.lookup( "admin/OrgunitService" );
+		var jobpossvc = Service.lookup( "admin/JobpositionService" );
+	
+		this.resultList;
+		this.selectedItem;
+		this.orgUnits;
+		this.orgUnit;
+		this.searchText;
+
+		this.onload = function() {
+			this.orgUnits = svc.getUserOrgunits({});
+		}	
+
+		this.listModel = {
+			rows: 13,
+			fetchList: function(o) {
+				o.orgunitid = null;
+				o.searchText = null;
+				if(self.orgUnit) o.orgunitid = self.orgUnit.objid;
+				if(self.searchText) o.searchText = self.searchText;
+				
+				self.resultList = jobpossvc.getList( o );
+				return self.resultList;
+			}
+		}
+
+		var refreshList = function() {
+			self.listModel.refresh(true);	
+		}
+
+
+		this.addNew = function() {
+			var j = {};
+			if ( this.orgUnit ) j = {orgunitid: this.orgUnit.objid, orgunitcode: this.orgUnit.code };	
+			return new PopupOpener( "${JOBPOSITION.name}", {saveHandler:refreshList, entity:j}, {title:"Job Position"} );
+		}
+
+		this.open = function() {
+			return new PopupOpener( "${JOBPOSITION.name}", {saveHandler:refreshList, entity:this.selectedItem, mode:'read'}, {title:"Job Position"} );
+		}
+		
+		this.removeItem = function() { 
+			try {
+				if (!this.resultList) 
+					throw new Error('No available selected item(s)'); 
+				
+				var selectedList = this.resultList.collect(function(o){ 
+					if (o.selected == true) { 
+						if (o.assigneeid) 
+							throw new Error('Position cannot be removed if there is an assignee. Please unassign first.');
+
+						return o; 
+					} 
+					else {
+						return null; 
+					} 
+				});
+				
+				if (selectedList.length == 0) 
+					throw new Error('No available selected item(s)'); 
+				
+				if (confirm("You are about to remove the selected items. Do you want to continue?") ) { 
+					jobpossvc.remove( selectedList );
+					refreshList(); 
+				} 
+			} 
+			catch(e) {
+				alert(e);
+			} 
+		}
+
+		this.propertyChangeListener = {
+			orgUnit : function(o) { self.listModel.load(); }
+		}
+
+		this.selectAssignee = function() {
+			var h = function(x) {
+				jobpossvc.assign( {objid: self.selectedItem.objid, assigneeid: x.objid } );
+				refreshList();
+			}
+			return new PopupOpener( "admin:personnel-lookup" , {selectHandler: h});
+		}
+
+		this.removeAssignee = function() {
+			if( confirm( "You are about to remove this assigned position. Continue?") ) {
+				jobpossvc.unassign( {objid: self.selectedItem.objid  } );
+				refreshList();
+			}
+		}
+		
+		
+		this.doSearch = function() {
+			self.listModel.load();
+		}
+		this.reset = function() {
+			this.searchText = null;	
+			self.listModel.load();
+		}
+		
+		this.viewPermissions = function() {
+			return new PopupOpener( "${JOBPERMISSION.name}" , {jobposition:this.selectedItem} );
+		}
+	});
+</script>
+
+<style>
+.pagelist {width:90%;}
+.page-title {padding-bottom:10px;} 
+</style>
+
+<table r:context="$PAGE.context" r:model="${PAGE.listModel}" r:name="selectedItem" r:varName="item" r:varStatus="stat" class="grid" cellpadding="0" cellspacing="0" width="100%"> 
+<thead>
+	<tr>
+		<th class="action">&nbsp;</th> 
+		<th width="100">Code</th>
+		<th>Description</th>
+		<th width="100">Org</th>		
+		<th width="200">Assignee</th>
+		<th>&nbsp;</th> 
+	</tr>
+</thead>
+<tbody>
+	<tr>
+		<td class="action">
+			<input type="checkbox" r:context="${PAGE.context}" r:name="resultList[#{stat.index}].selected"/> 
+		</td> 	
+		<td>
+			<a r:context="${PAGE.context}" r:name="open">#{item.code}</a> 
+		</td>
+		<td>#{item.title}</td>
+		<td>#{item.orgunitid}</td>		
+		<td>
+			<div r:context="${PAGE.context}" r:visibleWhen="#{item.assignee == null}">
+				<i>Vacant</i>
+				<a r:context="${PAGE.context}" r:name="selectAssignee"> [Assign] </a>
+			</div>
+			<div r:context="${PAGE.context}" r:visibleWhen="#{item.assignee != null}">
+				#{item.assignee}
+				<a r:context="${PAGE.context}" r:name="removeAssignee"> [Unassign]</a>
+			</div>
+		</td>
+		<td class="action">
+			<a r:context="${PAGE.context}" r:name="viewPermissions"><span class="rui-icon rui-icon-key" title="View permissions"/></a>
+		</td>				
+	</tr>
+</tbody>
+</table>
+
+<div r:dockTo="document-actions"></div> 

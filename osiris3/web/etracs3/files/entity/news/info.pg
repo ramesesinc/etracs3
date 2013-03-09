@@ -1,0 +1,7 @@
+{
+	title: 		'News',
+	context:	'news',
+	fragment: 	true,
+	secured:	true,
+	master: 	'fragment_document'
+}	

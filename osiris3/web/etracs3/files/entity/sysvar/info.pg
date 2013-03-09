@@ -1,0 +1,8 @@
+{
+	title: 		'System Variable',
+	context:	'sysvar',
+	fragment: 	true,
+	secured:	true,
+	master: 	'fragment_popup_form',
+	options:	{width:500, height:300}
+}	

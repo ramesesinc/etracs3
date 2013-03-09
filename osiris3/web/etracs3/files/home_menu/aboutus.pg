@@ -1,0 +1,7 @@
+{
+	href:		'/entity/aboutus/info',
+	title: 		'About Us', 
+	sortorder:	0,
+	secured:	true,
+	fragment:	true
+}

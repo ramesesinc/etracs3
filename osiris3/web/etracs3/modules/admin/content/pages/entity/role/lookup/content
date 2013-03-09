@@ -1,0 +1,68 @@
+<script>
+	\$put( "$PAGE.context", new function() {
+		
+			var svc = Service.lookup( "admin/RoleService" );
+			
+			this.selectHandler;
+			this.selectedItem;
+			
+			this.items;
+			
+			this.domains;
+			this.domain;
+			this.sysrole;
+			var self = this;
+			
+			this.onload = function() {
+				this.domains = svc.getDomainList();
+			}
+
+			this.getSysRoles = function() {
+				if(!this.domain) return [];
+				return svc.getSysRoles({domain:this.domain});
+			}
+			
+			this.listModel = {
+				rows: 10,
+				fetchList: function(o) {
+					o.exclude_system = true;
+					o.sysrole = null;
+					o.domain = null;
+					if( self.sysrole ) o.sysrole = self.sysrole;
+					if( self.domain ) o.domain = self.domain;
+					return svc.getList( o );	
+				}
+			}
+			
+			this.propertyChangeListener = {
+				"sysrole" : function(o) {
+					self.listModel.load();
+				},
+				"domain" : function(o) {
+					self.sysrole = null;
+					self.listModel.load();
+				}
+			}
+			
+			this.select = function() {
+				if(!this.selectHandler) {
+					alert('Please add a selectHandler');
+					return;
+				}
+				this.selectHandler( this.selectedItem );
+			}	
+		}
+	);
+</script>
+
+<style>
+	#tbl tr.selected td { background-color:#e5edfb; cursor:pointer; }	
+</style>
+
+<table r:context="$PAGE.context" r:model="listModel" r:name="selectedItem" r:varName="item" id="tbl" class="grid" width="100%">
+	<tr>
+		<td>#{item.role}</td>
+	</tr>
+</table>
+
+

@@ -1,0 +1,8 @@
+{
+	title: 		'Settings',
+	context: 	'sysvarlist', 
+	fragment: 	true,
+	secured: 	true, 
+	layout:		'common/pagelist',
+	master:		'fragment_document'
+}

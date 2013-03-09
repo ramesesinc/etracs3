@@ -1,0 +1,61 @@
+<script>
+	\$put('server-mgmt', new function() {
+	
+		var self = this;
+		
+		this.FILTER_TYPES = ["ALL", "BY_NAME"]; 
+	
+		this.scriptFilterType = "ALL"; 
+		this.scriptName;	
+		this.reloadScript = function() {
+			var svc = Service.lookup("tools/ScriptMgmtService");
+			if (this.scriptFilterType == "ALL") 
+				svc.redeployAll(); 
+			else
+				svc.redeploy(this.scriptName); 
+			
+			MsgBox.alert('All script services has been successfully reloaded.');
+		}
+		
+		this.schemaFilterType = "ALL"; 
+		this.schemaName;		
+		this.reloadSchema = function() {
+			var svc = Service.lookup("tools/SchemaMgmtService");
+			if (this.schemaFilterType == "ALL") 
+				svc.redeployAll(); 
+			else
+				svc.redeploy(this.schemaName); 
+				
+			MsgBox.alert('All database schemas has been successfully reloaded.');
+		} 		
+	});
+</script>
+
+<h3 style="margin-bottom:10px;">Script Management</h3>
+<table cellpadding="0" cellspacing="2">
+<tr>
+	<td style="vertical-align:top;">
+		<select r:context="server-mgmt" r:items="FILTER_TYPES" r:name="scriptFilterType"></select>
+	</td> 
+	<td r:context="server-mgmt" r:depends="scriptFilterType" r:visibleWhen="#{scriptFilterType=='BY_NAME'}" style="vertical-align:top;">
+		<input type="text" r:context="server-mgmt" r:name="scriptName" r:textcase="none" style="width:200px;"/> 
+	</td> 	
+	<td><button r:context="server-mgmt" r:name="reloadScript">Reload</button></td> 	
+</tr>
+</table>
+
+<br/>
+<br/>
+<h3 style="margin-bottom:10px;">Schema Management</h3>
+<table cellpadding="0" cellspacing="2">
+<tr>
+	<td style="vertical-align:top;">
+		<select r:context="server-mgmt" r:items="FILTER_TYPES" r:name="schemaFilterType"></select>
+	</td> 
+	<td r:context="server-mgmt" r:depends="schemaFilterType" r:visibleWhen="#{schemaFilterType=='BY_NAME'}" style="vertical-align:top;">
+		<input type="text" r:context="server-mgmt" r:name="schemaName" r:textcase="none" style="width:200px;"/> 
+	</td> 
+	<td><button r:context="server-mgmt" r:name="reloadSchema">Reload</button></td>
+</tr> 
+</table> 
+

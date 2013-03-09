@@ -1,0 +1,8 @@
+{
+	title:		'Search Role',
+	context:	'userrolelookup',
+	fragment: 	true,
+	hidden: 	true,
+	master:		'fragment_popup_pagelist',
+	options:    {width:500, height:400}
+}

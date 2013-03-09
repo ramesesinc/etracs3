@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		@head/import-fonts('opensans')
+		@head/favicon()
+		@head/standard()
+		@head/css('style')
+		@@head/page-imports()
+		
+		<style>
+			.rui-theme-header-background {
+				background: #FFA417 url('/res/header-background.png');  
+			}
+			.master-body-wrapper {padding-top:55px;} 
+			.master-header { border-bottom: 1px solid #efefef;} 
+			.master-header-content-wrapper { padding-right:15px; } 
+			.master-document-header-wrapper {
+				padding: 3px 15px 1px 15px; height: auto; 
+				background-color: #fff; color:#808080;  
+				border-bottom: 1px solid #cfcfcf;
+			} 
+			.master-document-header-wrapper p {margin:0;padding:0;} 
+			.master-document-header-title { 
+				font-weight: normal; font-size: 1.3em; 
+				color1: #787777; padding-left:5px; height:30px;
+			} 
+			.master-document-header-desc {
+				padding: 0px;
+				margin: 0px 0px 3px 0px;
+				font-style: italic;
+				font-weight: normal;
+				font-size: 9pt;
+			}
+			.master-footer {height:20px;padding:5px;padding-top:10px;} 
+			.master-sidebar { border-right:1px solid #efefef;} 
+			.master-content { background-color:#fff; padding-top:10px; } 
+			#document-title { width:150px; } 
+			#document-actions {padding-left:0; padding-right:15px;} 			
+			.document-top { padding:12px 5px 3px 20px; background:#fff; border-bottom:1px solid #cfcfcf; } 
+			.document-sidebar, .document-content {border-top:1px solid #efefef;} 	
+			.document-content .master-content {height:500px; border:1px solid #e1e1e1; border-right:none; border-top:none; padding-top:10px; padding-left:15px;} 
+			button {padding:0 7px 0 7px; height:auto; line-height:1.5em; } 			
+			body.inbox {overflow:hidden;} 			
+		</style> 
+	</head>
+	
+	<body class="rui-theme-background inbox">
+		<div class="rui-theme-header-background master-header">
+			<div class="master-header-content-wrapper">
+				<table cellpadding="0" cellspacing="0" width="100%" border="0">
+				<tr>
+					<td class="master-logo" style="width:250px;min-width:250px;">
+						<img class="master-logo-icon" src="${PROJECT.logo}"/>
+					</td>
+					<td>
+						${_header_options} 
+					</td>
+					<td align="right" class="header-action" width="50">@logout()</td>
+				</tr>
+				</table>
+			</div> 	
+		</div>
+		
+		<div class="master-body-wrapper">
+			<%
+				def sidebar_content = ANUBIS.getBlock('sidebar'); 
+				if (sidebar_content == null) sidebar_content = '';
+			%>
+			
+			<table cellpadding="0" cellspacing="0" border="0" width="100%" height="100%">
+			<tr>
+				<td id="document-title" class="master-document-header-title document-top" valign="top"> ${PAGE.title} </td>  
+				<td id="document-actions" class="document-top" valign="top"> </td> 
+			</tr>
+			<tr class="master-body">
+				<td class="document-sidebar" valign="top"> 
+					<div id="document-sidebar" class="master-sidebar"> ${sidebar_content} </div> 
+				</td> 
+				<td class="document-content" valign="top"> 
+					<div class="scrollable master-content"> ${_content} </div> 
+				</td> 
+			</tr>
+			</table> 	
+		
+			<div class="master-footer">${_footer}</div> 
+		</div>
+		
+		<script> RUI.createSideMenu(); </script> 			
+	</body>
+</html>
+

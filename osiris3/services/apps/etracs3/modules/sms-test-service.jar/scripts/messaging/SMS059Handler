@@ -1,0 +1,63 @@
+
+import com.rameses.annotations.*;
+import com.rameses.server.common.*;
+import com.rameses.http.*;
+
+class SMS059Handler
+{
+	@Service(value="SMSService", connection="etracsorg") 
+	def smsSvc;
+	
+	@Service('RPTBillingService')
+	def billingSvc
+	
+	@Service('NumberService')
+	def numSvc
+
+	/*
+		eval is optional. If you want to receive all msg kindly remove the eval attribute 
+	*/
+	@OnMessage(value="sms", eval="data.msg.toUpperCase().startsWith('RPTBAL')") 
+	public void receive(def param) 
+	{
+		println "SMS059Handler: receive $param"; 
+		def tokens = param.msg.tokenize(' ')
+		def reply = ''
+		if( tokens.size() < 2) {
+			reply = 'TD No. must be specified'
+		}
+		else {
+			try{
+				def tdno = tokens[1]
+				//def bill = billingSvc.generateBillByTdNo( tdno )
+				def bill = [:]
+				if( tdno == '2009-10001-00025' ) bill.grandtotal = 1653.80
+				else if( tdno == '2009-10001-00053' ) bill.grandtotal = 22390.40
+				else if( tdno == '2009-10001-00005' ) bill.grandtotal = 893.43
+				else 
+					throw new Exception('TD No. ' + tdno + ' is invalid or does not exists')
+				reply = 'Current balance for TD No. ' + tdno + ' is P' + numSvc.format('#,##0.00', bill.grandtotal)
+			}
+			catch( e ) {
+				reply = e.message 
+			}
+		}
+		smsSvc.send([to:param.from, msg:reply]); 
+	}
+	
+	@OnMessage(value="sms", eval="data.msg.toUpperCase().startsWith('HOTLINE')") 
+	public void receiveHotline(def param) 
+	{
+		try 
+		{
+			println "SMS059Handler: receive $param"; 
+			
+			//change this hotline number to the correct one 
+			def hotlineno = '09229376762';
+			smsSvc.send([to:hotlineno, msg:"SMS059Handler: ${param.msg}".toString()]); 
+		} 
+		catch(e) {
+			println "ERROR: " + e.message;
+		}
+	}	
+}

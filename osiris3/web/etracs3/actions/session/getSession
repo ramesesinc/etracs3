@@ -1,0 +1,24 @@
+import com.rameses.anubis.web.*;
+import com.rameses.anubis.*;
+import com.rameses.util.*;
+
+def request = AnubisContext.currentContext.request;
+def sessionVar = CookieUtil.getCookie( "SESSIONID", request );
+if (sessionVar?.value) 
+{
+	def sess = sessionVar.value;
+	sess = sess.substring( 0, sess.indexOf("!") );
+   
+	try 
+	{ 
+	   def info = SERVICE.lookup('system/SessionService').getInfo(sess);
+	   request.setAttribute( "SESSION_INFO", info );
+	} 
+	catch(e) 
+	{ 
+		sessionVar = null; 	
+		def oe = ExceptionManager.getOriginal(e);
+		System.out.println("session/getSession: [ERROR] " + oe.message + " ($sess)"); 
+	} 
+}
+return sessionVar ? [SESSIONID: sessionVar.value] : null;

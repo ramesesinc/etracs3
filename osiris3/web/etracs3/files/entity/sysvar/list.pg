@@ -1,0 +1,8 @@
+{
+	title: 		'System Variables',
+	context: 	'sysvarlist', 
+	fragment: 	true,
+	secured: 	true, 
+	layout:		'common/pagelist',
+	master:		'fragment_document'
+}

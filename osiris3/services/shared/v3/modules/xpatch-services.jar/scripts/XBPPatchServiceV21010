@@ -1,0 +1,136 @@
+import com.rameses.common.*
+import com.rameses.annotations.*
+import java.rmi.server.UID 
+
+public class XPatchServiceV21010
+{
+	@PersistenceContext('main')
+	def em
+	
+	@ProxyMethod 
+	public List getApplicationList() {
+		return em.sqlContext.createQuery('SELECT objid FROM bpapplication').resultList 
+	}
+	
+	@ProxyMethod
+	public void updateAppInfo( objid ) {		
+		def app = em.sqlContext.createQuery('SELECT info, extended  FROM bpapplication WHERE objid = $P{objid}')
+							.setParameter('objid', objid)
+							.singleResult 
+		if( ! app ) return 
+		
+		println 'Processing App -> ' + objid 
+		app.info = em.serializer.read( app.info )
+		app.info.objid = objid
+		app.extended = em.serializer.read(app.extended)
+		
+		doUpdateExtended( app )
+		doUpdateAppInfo( app )
+	}
+	
+	void doUpdateAppInfo( app ) {
+		app.info.putAll( app.info.barangay ) 
+		em.sqlContext.createExecutor('''
+			UPDATE bpapplication SET 
+				taxpayername = $P{taxpayername},
+				taxpayeraddress = $P{taxpayeraddress},
+				tin = $P{tin},
+				bin = $P{bin},
+				pin = $P{pin},
+				officetype = $P{officetype},
+				organization = $P{organization},
+				ctcno = $P{ctcno},
+				ctcplaceissued = $P{ctcplaceissued},
+				ctcdateissued = $P{ctcdateissued},
+				administratorname = $P{administratorname},
+				administratoraddress = $P{administratoraddress},
+				barangayid = $P{barangayid},
+				barangayname = $P{barangayname}
+			WHERE objid = $P{objid}
+		''')
+		.setParameters( app.info )
+		.execute()
+	}
+	
+	void doUpdateExtended( app ) {
+		app.extended.applicationsignatories = app.info.applicationsignatories 
+		app.extended.assessmentsignatories =  app.info.assessmentsignatories
+		app.extended.requirements  = app.info.requirements
+		
+		em.sqlContext.createExecutor('UPDATE bpapplication SET extended = $P{extended} WHERE objid = $P{objid}')
+			.setParameter('extended', em.serializer.write( app.extended))
+			.setParameter('objid', app.info.objid )
+			.execute()
+	}
+	
+	@ProxyMethod
+	public void postTaxFee( objid ) {
+		def app = em.sqlContext.createQuery('SELECT objid, taxfees FROM application WHERE objid = $P{objid}')
+							.setParameter('objid', objid)
+							.singleResult 
+		if( ! app ) return 
+		
+		def taxfees = em.serializer.read( app.taxfees )
+		taxfees.each { 
+			try {
+				it.objid = 'BTF' + new UID()
+				it.applicationid = objid 
+				println 'Posting TaxFees -> ' + it.objid 
+				em.create('application:bptaxfee', it )
+			}
+			catch( e) {
+				println 'Error -> ' + e.message 
+			}
+		}
+		em.sqlContext.createExecutor('UPDATE application SET taxfees = $P{taxfees} WHERE objid = $P{objid}')
+						.setParameter('objid', objid)
+						.setParameter('taxfees', em.serializer.write( taxfees ) )
+						.execute()
+	}	
+	
+	@ProxyMethod
+	public void postReceivable( objid ) {
+		def app = em.sqlContext.createQuery('SELECT objid, taxfees, receivables FROM application WHERE objid = $P{objid}')
+							.setParameter('objid', objid)
+							.singleResult 
+		if( ! app ) return 
+		
+		def taxfees = em.serializer.read( app.taxfees )
+		
+		em.serializer.read( app.receivables ).each { rcv ->
+			try {
+				println 'Posting receivable -> ' + rcv.objid 
+				if( rcv.surcharge == null ) rcv.surcharge = 0.0 
+				if( rcv.interest == null ) rcv.interest = 0.0 
+				if( rcv.discount == null ) rcv.discount = 0.0 
+				def tf = taxfees.find{ 
+					if( rcv.lobid && it.lobid  )
+						return it.lobid == rcv.lobid && it.acctid == rcv.acctid 
+					if( rcv.lobid == null && it.lobid == null )
+						return it.acctid == rcv.acctid 
+					return false 
+				}
+				rcv.taxfeeid = tf?.objid 
+				em.create('application:bpreceivable', rcv )
+			}
+			catch( e ) {
+				println 'error -> ' + e.message 
+			}
+		}
+	}	
+	
+	@ProxyMethod
+	public void postCredit( objid ) {
+		def app = em.sqlContext.createQuery('SELECT objid, credits FROM application WHERE objid = $P{objid}')
+							.setParameter('objid', objid)
+							.singleResult 
+		if( ! app ) return 
+		
+		em.serializer.read( app.credits ).each { 
+			println 'Posting credit -> ' + it.objid 
+			it.applicationid = objid 
+			em.create('application:bpreceivablecredit', it )
+		}
+	}	
+	
+}

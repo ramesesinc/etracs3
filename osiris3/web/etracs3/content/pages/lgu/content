@@ -1,0 +1,21 @@
+<script>
+	\$put('lgumgmt', new function() { 
+	
+		this.onload = function() 
+		{
+			<%
+			def menus = ANUBIS.getFolder("/lgu_menu").allowedChildren.findAll{ it.hidden != true };
+			if ( menus ) 
+			{
+				def menu = menus[0]; 
+				if (menu.href) menu = ANUBIS.getFileInfo(menu.href+'.pg');
+			
+				println "if( !location.hash ) location.hash='${menu.name}';";
+			}
+			%>
+		}
+		
+	});
+</script>
+
+<div id="content"></div>

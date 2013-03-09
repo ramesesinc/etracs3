@@ -1,0 +1,7 @@
+{
+	title: 		'Contact Us',
+	context:	'contactus',
+	fragment: 	true,
+	secured:	true,
+	master: 	'fragment_document'
+}	

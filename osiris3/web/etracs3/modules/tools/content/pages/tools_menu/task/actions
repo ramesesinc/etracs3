@@ -1,0 +1,2 @@
+<button r:context="${PAGE.context}" r:name="refresh" icon="rui-icon rui-icon-refresh">Refresh</button>
+<button r:context="${PAGE.context}" r:name="addTask" icon="rui-icon rui-icon-application">Add Task</button>

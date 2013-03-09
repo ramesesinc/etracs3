@@ -1,0 +1,7 @@
+{
+	href:		'/entity/lgu/main',
+	title: 		'LGU Management', 
+	sortorder:	1,
+	secured:	true,
+	fragment:	true
+}

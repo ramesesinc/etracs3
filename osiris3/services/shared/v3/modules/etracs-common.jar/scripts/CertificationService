@@ -1,0 +1,34 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import java.rmi.server.UID
+
+class CertificationService{
+	
+	@PersistenceContext('main')
+	def em;
+	
+	@Service('DateService')
+	def dtSvc;
+	
+	@Service('SequenceService')
+	def seqSvc 
+	
+	def SCHEMA_NAME = 'certification';
+	
+	
+	@ProxyMethod
+	public def create( entity, reftype, barcodekey ) {
+		def year = dtSvc.getServerYear()
+		def seqkey = reftype + '-' + year
+		entity.txnno = year + seqSvc.getNextFormattedSeries( seqkey )
+		entity.txndate = dtSvc.getServerDate()
+		entity.reftype = reftype 
+		if( barcodekey ) {
+			entity.barcode = barcodekey + year + entity.txnno 
+		}
+		em.validate( SCHEMA_NAME, entity)
+		em.create( SCHEMA_NAME, entity)
+		return entity 
+	}
+		
+}

@@ -1,0 +1,66 @@
+package bp.assessment.facts
+
+declare ApplicationFact
+	appid             : String 
+	applicationtype   : String    
+	organization      : String    
+	officetype        : String    
+	barangayid        : String
+end 
+
+declare LOBFact
+	appid            : String	
+	lobid            : String  	
+	name             : String 
+	assessmenttype   : String  
+	classificationid : String 
+	attributes       : java.util.List 
+end
+
+declare InputVariableFact 
+	appid   : String 
+	lobid   : String 
+	varid   : String
+	varname : String 
+	vartype : String 
+	value   : Object
+	systype : String
+end 
+
+declare TaxFeeFact
+	appid : String 
+	lobid : String 
+	acctid  : String 
+	assessedvalue : Double
+	amountdue     : Double 
+end 
+
+declare TaxFeeSummaryFact
+	appid   : String
+	name    : String
+	acctid  : String
+	value   : Double
+end 
+
+declare HighestComputed
+	appid : String 
+	acctid : String
+end 
+
+declare NotHighestComputed
+	appid : String 
+	acctid : String
+end 
+
+declare LowestComputed
+	appid : String 
+	acctid : String
+end 
+
+declare NotLowestComputed
+	appid : String 
+	acctid : String
+end 
+
+
+

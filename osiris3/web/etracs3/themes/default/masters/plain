@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		@head/import-fonts('opensans')
+		@head/favicon()
+		@head/standard()
+		@head/css('style')
+		@@head/page-imports()
+		
+		<style> 
+			body { margin:5px; }
+		</style> 	
+	</head>
+	
+	<body class="rui-theme-background">		
+		${_content}	
+	</body>
+</html>

@@ -1,0 +1,51 @@
+<script>
+		
+	\$put( "${PAGE.context}", new function() { 
+		var svc = Service.lookup("system/Var"); 
+
+		this.mode = 'read'; 
+		this.entity = {};
+		this.saveHandler;
+		
+		this.edit = function() {
+			this.mode = 'edit';
+		} 
+		
+		this.save = function() {
+			if (this.saveHandler) this.saveHandler(this.entity); 
+			
+			this.mode = 'read';
+			return '_close';
+		} 
+		
+		this.cancel = function() {
+			if (confirm('Discard changes?')) 
+			{
+				this.mode = 'read';
+				return '_close'; 
+			} 
+		} 
+	});
+	
+</script>
+
+<table class="dataform" cellpadding="0" cellspacing="0" border="0"> 
+	<tr>
+		<th width="100">Name:</th>
+		<td>
+			<input type="text" r:context="$PAGE.context" r:name="entity.name" r:required="true" r:caption="Name"  r:readonlyWhen="#{mode=='read'}" style="width:150px;"/>
+		</td>
+	</tr>
+	<tr>
+		<th>Value:</th>
+		<td>
+			<input type="text" r:context="$PAGE.context" r:name="entity.value" r:required="true" r:caption="Value" r:readonlyWhen="#{mode=='read'}" style="width:300px;"/>
+		</td>
+	</tr>
+	<tr>
+		<th>Description:</th>
+		<td>
+			<input type="text" r:context="$PAGE.context" r:name="entity.description" r:caption="Description" r:readonlyWhen="#{mode=='read'}" style="width:300px;"/>
+		</td>
+	</tr>	
+</table> 

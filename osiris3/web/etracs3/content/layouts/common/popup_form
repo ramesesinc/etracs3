@@ -1,0 +1,17 @@
+
+<a class="rui-dialog-close-action" r:context="${PAGE.context}" r:name="close" r:immediate="true" style="text-decoration:none;">
+	<span class="rui-icon rui-icon-close"/> 
+</a> 
+
+<table class="master-background rui-dialog" cellpadding="0" cellspacing="0" border="0">
+<tr> 
+	<td class="rui-dialog-header-actions"> ${_header_actions} </td> 
+</tr>
+<tr>
+	<td class="rui-dialog-content"> ${_content} </td> 
+</tr> 
+<tr> 
+	<td class="rui-dialog-footer-actions"> ${_footer_actions} </td> 
+</tr>
+</table>
+

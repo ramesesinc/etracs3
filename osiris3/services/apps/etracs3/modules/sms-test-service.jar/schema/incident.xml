@@ -1,0 +1,9 @@
+<schema>
+	<element name="incident" tablename="incident_report">
+		<field name="objid" primary="true"/>
+		<field name="purok" required="true"/>
+		<field name="incidenttype" required="true" />
+		<field name="detail" required="true" />
+		<field name="dtreceived" required="true" />
+	</element>
+</schema>

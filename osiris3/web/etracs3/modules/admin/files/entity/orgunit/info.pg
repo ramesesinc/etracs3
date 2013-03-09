@@ -1,0 +1,9 @@
+{
+	title: 		'Org Unit',
+	context:	'orgunit',
+	fragment: 	true,
+	sortorder:	2,
+	secured:	true,
+	master:		'fragment_popup_crud',
+	options:	{height:250, width:500}
+}

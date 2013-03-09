@@ -1,0 +1,7 @@
+{
+	href:		'/entity/sysvar/list',
+	title: 		'System Settings', 
+	sortorder:	0,
+	secured:	true,
+	fragment:	true
+}

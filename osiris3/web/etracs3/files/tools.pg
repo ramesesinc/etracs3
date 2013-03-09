@@ -1,0 +1,5 @@
+{
+	href: 		'/tools/home', 
+	secured: 	true,
+	hidden: 	true 
+}

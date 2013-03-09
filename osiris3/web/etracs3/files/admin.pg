@@ -1,0 +1,5 @@
+{
+	href: 		'/admin/home', 
+	secured: 	true,
+	hidden: 	true 
+}

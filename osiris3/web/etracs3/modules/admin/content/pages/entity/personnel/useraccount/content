@@ -1,0 +1,72 @@
+<script>
+	\$put( "${PAGE.context}", new function() { 
+		var svc = Service.lookup( "admin/UserAccountService" );
+		
+		this.useraccount;
+		this.saveHandler;
+		this.confirmpwd;
+		
+		this.save = function() {
+			if( this.confirmpwd != this.useraccount.pwd) {
+				alert('Confirm password must match password specified');
+				return;
+			}
+			svc.createLoginAccount( this.useraccount );
+			if(this.saveHandler) this.saveHandler();
+			
+			return "_close";
+		}
+		
+		this.cancel = function() {
+			if( confirm( "Discard changes?")) {
+				return "_close";
+			}
+		}
+	});
+</script>
+
+<style>
+#tbl th {vertical-align:middle;} 
+</style> 
+
+<div r:dockTo="footer-actions">
+	<button r:context="${PAGE.context}" r:name="save" icon="rui-icon rui-icon-save">Save</button>
+	<button r:context="${PAGE.context}" r:name="cancel" icon="rui-icon rui-icon-cancel" r:immediate="true">Cancel</button>
+</div> 
+
+<table id="tbl" class="dataform" cellpadding="0" cellspacing="0" border="0">
+	<tr>
+		<th>Name:</th>
+		<td>
+			<label r:context="${PAGE.context}">
+				#{useraccount.lastname}, #{useraccount.firstname} 
+			</label>	
+		</td>
+	</tr>
+	<tr>
+		<th>Email:</th>
+		<td>
+			<input type="text" r:context="${PAGE.context}" r:name="useraccount.email" style="width:300px;"/>
+		</td>
+	</tr>
+	
+	<tr>
+		<th>User ID: <font class="required">*</font></th>
+		<td>
+			<input type="text" r:context="${PAGE.context}" r:name="useraccount.uid" r:required="true" r:caption="User ID" style="width:150px;"/>
+		</td>
+	</tr>
+	<tr>
+		<th>Password: <font class="required">*</font></th>
+		<td>
+			<input type="password" r:context="${PAGE.context}" r:name="useraccount.pwd"  r:required="true" r:caption="Password" style="width:150px;"/>
+		</td>
+	</tr>
+	<tr>
+		<th style="width:100px;white-space:nowrap;">Confirm Pwd:</th>
+		<td>
+			<input type="password" r:context="${PAGE.context}" r:name="confirmpwd" style="width:150px;"/>
+		</td>
+	</tr>
+</table>
+

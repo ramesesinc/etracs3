@@ -1,0 +1,9 @@
+{
+	title: 		'Tasks',
+	context: 	'tasklist',
+	fragment: 	true,
+	secured:	true, 
+	sortorder:	1,
+	master:		'fragment_document',
+	layout: 	'common/pagelist'
+}

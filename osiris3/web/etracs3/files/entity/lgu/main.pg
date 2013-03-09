@@ -1,0 +1,7 @@
+{
+	title: 		'LGU Management',
+	context: 	'lgu', 
+	fragment: 	true,
+	secured: 	true, 
+	master:		'fragment_document'
+}

@@ -1,0 +1,5 @@
+<button r:context="${PAGE.context}" r:name="${PAGE.listModel? PAGE.listModel: 'listModel'}.moveFirst" icon="rui-button-icon12 rui-icon-navfirst12" title="Go to first page"/>
+<button r:context="${PAGE.context}" r:name="${PAGE.listModel? PAGE.listModel: 'listModel'}.movePrev"  icon="rui-button-icon12 rui-icon-navprev12" title="Go to previous page"/>
+<button r:context="${PAGE.context}" r:name="${PAGE.listModel? PAGE.listModel: 'listModel'}.moveNext"  icon="rui-button-icon12 rui-icon-navnext12" title="Go to next page"/>
+<span style="padding-left:10px;"/>
+<button r:context="${PAGE.context}" r:name="pagelist_refresh"  icon="rui-button-icon12 rui-icon-refresh12" title="Refresh page"/>

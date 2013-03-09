@@ -1,0 +1,9 @@
+{
+	context: 	'barangay',
+	fragment: 	true,
+	secured: 	true,
+	master: 	'fragment_popup_form',
+	
+	title:		'Add Barangay', 	
+	options: 	{width:450, height:200} 
+}

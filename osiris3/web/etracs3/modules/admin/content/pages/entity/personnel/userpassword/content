@@ -1,0 +1,56 @@
+<script>
+	\$put( "${PAGE.context}", new function() {
+		var svc = Service.lookup( "admin/UserAccountService" );
+		
+		this.useraccount;
+		this.confirmpwd;
+		
+		this.save = function() {
+			if ( this.confirmpwd != this.useraccount.newpassword ) 
+			{
+				alert('Confirm password must match password specified');
+				return;
+			}
+			
+			svc.changePassword( this.useraccount );
+			alert('Password successfully changed');
+			return "_close";
+		}
+		
+		this.cancel = function() { 
+			if (confirm(" Discard changes? ")) return "_close";
+		}
+	});
+</script>
+
+<div r:dockTo="footer-actions">
+	<button r:context="${PAGE.context}" r:name="save" icon="rui-icon rui-icon-save">Save</button> 
+	<button r:context="${PAGE.context}" r:name="cancel" icon="rui-icon rui-icon-cancel" r:immediate="true">Cancel</button> 
+</div>
+
+<table class="dataform" cellpadding="0" cellspacing="0" style="white-space:nowrap;">
+	<tr>
+		<th width="100">User ID:</th>
+		<td>
+			<label r:context="${PAGE.context}" r:name="useraccount.username"/>
+		</td>
+	</tr>
+	<tr>
+		<th>Old Password:</th>
+		<td>
+			<input type="password" r:context="${PAGE.context}" r:name="useraccount.oldpassword"  r:required="true" r:caption="Old Password"/>
+		</td>
+	</tr>
+	<tr>
+		<th>New Pwd:</th>
+		<td>
+			<input type="password" r:context="${PAGE.context}" r:name="useraccount.newpassword"  r:required="true" r:caption="New Password"/>
+		</td>
+	</tr>
+	<tr>
+		<th>Confirm Pwd:</th>
+		<td>
+			<input type="password" r:context="${PAGE.context}" r:name="confirmpwd"  r:required="true" r:caption="Confirm Password"/>
+		</td>
+	</tr>
+</table>

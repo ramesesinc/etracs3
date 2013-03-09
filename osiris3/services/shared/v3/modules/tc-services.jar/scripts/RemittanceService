@@ -1,0 +1,490 @@
+import com.rameses.annotations.*;
+import com.rameses.common.*;
+import java.rmi.server.UID;
+import java.text.DecimalFormat;
+
+class RemittanceService {
+
+	@PersistenceContext("main")
+	def em;
+	
+	@Service('Var')
+	def var
+	
+	@Service("SequenceService")
+	def seqsvc;
+	
+	@Service("DateService")
+	def dtsvc;
+	
+	@Service("ReceiptService")
+	def rctsvc;
+	
+	@Service("AFControlService")
+	def afctrlsvc;
+	
+	@Service("LogService")
+	def logsvc;
+	
+	@Service("HTMLService")
+	def htmlsvc;
+	
+	@Service("ETRACSUserService")
+	def userSvc;
+	
+	@Env
+	def env
+	
+	def SCHEMA_NAME = "remittance";
+	def SCHEMA_VERSION = "1.0";
+	def REMITTED_FORM_SCHEMA_NAME = "remittance:remittedform";
+	def REMITTANCE_IMPORT_SCHEMA = 'remittance:remittanceimport'
+	
+	
+	@ProxyMethod
+	public def getList( searchText, params ) {
+		if ( isCollector( env.USERID ) )
+			return getListByCollector( searchText, params );
+		return getListAll( searchText, params );
+	}
+	
+	private def isCollector( userid ) {
+		try {
+			def o = userSvc.getCollector( userid );
+			return (o != null)
+		}
+		catch(e) {
+			println e.message
+		}
+		return false;
+	}
+	
+	private def getListAll( searchText, params ) {
+		if ( !searchText )
+			return getListByQuery( "remittance:getList", [:], params, null )
+			
+		def results = getListByQuery( "remittance:getRemittanceByTxnNo", [txnno:searchText], params, null )
+		if (results) return results;	
+		results = getListByQuery( "remittance:getRemittanceByCollector", [collectorname:searchText+'%'], params, null )
+		if (results) return results;
+		return [];
+	}
+	
+	private def getListByCollector( searchText, params ) {
+		if ( !searchText ) {
+			return getListByQuery( "remittance:getListByCollectorid", [collectorid:env.USERID], params, null )
+		}
+		return getListByQuery( "remittance:getListByCollectorid", [collectorid:env.USERID, txnno:searchText], params, null )
+	}
+
+	/*========================================================================
+	** Load receipts, otherpayments and remittedforms when needed only. 
+	** In normal circumstances, users rarely view this informations.
+	========================================================================*/
+	@ProxyMethod
+	public def open( objid ) {
+		def rem = em.read( SCHEMA_NAME, [objid:objid] );
+		rem.remittedforms = em.sqlContext.createNamedQuery( "remittance:getRemittedFormsByRemittance" ).setParameter( "remittanceid", rem.objid ).resultList;
+		if( ! rem ) throw new Exception('Remittance does not exists or has been deleted.')
+		return rem;
+	}
+	
+	private def loadRemittedReceipts( objid ) {
+		def list = []
+		def receiptlist = em.sqlContext.createNamedQuery('remittance:getReceiptIdsByRemittance')
+								.setParameter('remittanceid', objid).resultList
+		receiptlist.each{
+			if( it.afid != '51' ) throw new Exception('AF ' + it.afid + ' is not yet supported for exporting.')
+			list.add( rctsvc.open(it.objid))
+		}
+		return list 
+	}
+	
+	@ProxyMethod 
+	public def getRemittanceReceipts( objid ) {
+		return em.sqlContext.createNamedQuery( "remittance:getReceiptsByRemittance" ).setParameter( "remittanceid", objid ).resultList;
+	}
+	
+	@ProxyMethod
+	public List getOpenNonCashPayments( entity ) {
+		return em.sqlContext.createNamedQuery('remittance:getOpenNonCashPayments')
+					.setParameter('collectorid', entity.collectorid)
+					.resultList 
+	}
+	
+	@ProxyMethod
+	public List getRemittedNonCashPayments( entity ) {
+		return em.sqlContext.createNamedQuery('remittance:getRemittedNonCashPayments')
+					.setParameter('objid', entity.objid)
+					.resultList 
+	}
+	
+	@ProxyMethod
+	public def save( rem ) {
+		validate( rem );
+		
+		rem.docstate 	= 'OPEN';
+		rem.txnno 		= generateRemNo( rem.collectorid );
+		rem.dtposted 	= dtsvc.getServerDate()
+		if( ! rem.txndate ) {
+			rem.txndate = dtsvc.format( "yyyy-MM-dd", rem.dtposted );
+		}
+		def dt = dtsvc.parseDate( rem.txndate, null );
+		rem.txntimestamp = dtsvc.buildCustomTimeStamp( rem.txndate )
+		
+		em.validate( SCHEMA_NAME, rem );
+		em.create( SCHEMA_NAME, rem );
+		closeReceipts( rem );
+		updateAfControls( rem );
+		postRemittedForms( rem );
+		return rem;
+	}
+	
+	@ProxyMethod
+	public List getLiquidatingOfficerList() {
+		return em.sqlContext.createNamedQuery('remittance:getLiquidatingOfficerList').resultList 
+	}
+	
+	void updateLiquidatingOfficerInfo( rem ) {
+		def lq = em.sqlContext.createNamedQuery('remittance:getLiquidatingOfficer').setParameter('collectorid', rem.collectorid).singleResult 
+		if( ! lq ) throw new Exception('Liquidating Officer for this collector is not set.')
+		rem.liquidatingofficerid 		= lq.objid 
+		rem.liquidatingofficername 	= lq.formalname
+		rem.liquidatingofficertitle 	= lq.jobtitle 
+	}
+	
+	private validate( rem ) {
+		// check: totalcash == total( denomination.amount )
+		def totalcash = 0.00;
+		for (denom in rem.denominations) {
+			totalcash += denom.amount;
+		}
+		if ( totalcash != rem.totalcash )
+			 throw new Exception( "Cash Received must be equal to Cash Expected." );
+			 
+		//check _receiptcount == existing _receiptcount and _totalamount = existing _totalamount
+		def info = getUnremittedReceiptSummaryInfo( rem.collectorid )
+		
+		if (rem._receiptcount != info.count )
+			throw new Exception( "There are new transactions not included in this remittance.\nClose the form and perform the transaction again." );
+		if ( rem._totalamount != info.totalamount )
+			throw new Exception( "Amount discrepancy detected.\nClose the form and perform the transaction again." );		
+	}
+	
+	private void closeReceipts( rem ) {
+		def params = [
+			collectorid : rem.collectorid, 
+			remittanceid : rem.objid, 
+			remittanceno : rem.txnno, 
+			remittancedate : rem.txndate
+		];
+		em.sqlContext.createNamedExecutor( "remittance:closeReceiptListForRemittance" ).setParameters( params ).execute();
+	}
+	
+	private void updateAfControls( rem ) {
+		em.sqlContext.createNamedExecutor( "remittance:updateAfControlForRemittance" ).setParameter( "collectorid",  rem.collectorid ).execute();
+		em.sqlContext.createNamedExecutor( "remittance:closeAfControl" ).setParameter( "collectorid",  rem.collectorid ).execute();
+	} 
+	
+	private def generateRemNo( collectorid ) {
+		def dt = dtsvc.getServerDate();
+		def cal = Calendar.instance;
+		cal.time = dt;
+		def yr = cal.get(Calendar.YEAR);
+		
+		def key = 'REM-' + yr
+		
+		def userTxnCode = userSvc.getUserTxnCode(collectorid ) 
+		if( userTxnCode ) {
+			key = userTxnCode + '-' + yr 
+		}
+		
+		def remprefix = var.remittance_no_prefix
+		if( remprefix != null && remprefix.trim().length() > 0 ) {
+			key = remprefix + '-' + key 
+		}
+		
+		def series = seqsvc.getNextFormattedSeries( key );
+		return key + '-' + series;
+	}
+	
+	private void postRemittedForms( rem ) {
+		for (form in rem.remittedforms) {
+			form.remittanceid = rem.objid;
+			em.validate( REMITTED_FORM_SCHEMA_NAME, form );
+			em.create( REMITTED_FORM_SCHEMA_NAME, form );
+            //
+            //post to afinventorycredit 
+            def creditinfo = [afcontrolid:form.afcontrolid, qtyissued:form.issuedqty ]
+            em.sqlContext.createNamedExecutor('remittance:updateAFInventoryCreditInfo').setParameters( creditinfo ).execute()
+		} 
+	}
+	
+	@ProxyMethod
+	public def createRemittance( rem ) {
+		checkUnpostedCapturedCollections( rem.collectorid )
+		checkHasUnremittedReceipts( rem)
+		def reminfo = em.sqlContext.createNamedQuery( "remittance:getRemittanceInfo" ).setParameter( "collectorid", rem.collectorid ).singleResult;
+		rem.amount = (reminfo.totalamount) ? reminfo.totalamount : 0.0;
+		rem.totalcash = (reminfo.totalcash) ? reminfo.totalcash : 0.0;
+		rem.totalotherpayment = (reminfo.totalotherpayment) ? reminfo.totalotherpayment : 0.0;
+		rem.remittedforms = createRemittedForms( rem );
+		return rem;
+	}
+	
+	void checkHasUnremittedReceipts( rem ) {
+		def info = getUnremittedReceiptSummaryInfo( rem.collectorid )
+		rem._receiptcount = info.count
+		rem._totalamount  = info.totalamount 
+
+		if ( rem._receiptcount == 0 )
+			throw new Exception( "There are no unremitted receipts." );
+	}
+	
+	void checkUnpostedCapturedCollections( collectorid ) {
+		def unpostedCaptures = em.sqlContext.createNamedQuery('remittance:getUnpostedBatchCaptureCollections')
+								.setParameter('collectorid', collectorid)
+								.resultList
+		if( unpostedCaptures ) {
+			throw new Exception('There are still unposted batch captures.\nOpen and post the batch captured records before remittance.')
+		}
+	}
+	
+	/*-----------------------------------------------------
+	*
+	* Export Support
+	*
+	-------------------------------------------------------*/
+	
+	@ProxyMethod 
+	public def exportRemittance( objid ) {
+		def remittance = em.sqlContext.createNamedQuery('remittance:exportRemittance')
+						   .setParameter('objid', objid).singleResult 
+		if( ! remittance ) throw new Exception('Remittance does not exists.\nPlease verify that the records still exists.')
+		remittance.denominations = em.serializer.read( remittance.denominations)
+		return remittance 
+	} 
+	
+	@ProxyMethod 
+	public def exportRemittedForms( objid ) {
+		return em.sqlContext.createNamedQuery('remittance:exportRemittedForm').setParameter('objid', objid).resultList  
+	}
+	
+	@ProxyMethod 
+	public def exportRevenues( objid ) {
+		return em.sqlContext.createNamedQuery('remittance:exportRevenue').setParameter('objid', objid).resultList 
+	}
+	
+	@ProxyMethod 
+	public def exportReceiptLists( objid ) {
+		return em.sqlContext.createNamedQuery('remittance:exportReceiptList').setParameter('objid', objid).resultList 
+	}
+	
+	@ProxyMethod 
+	public def exportAFControls( objid ) {
+		return em.sqlContext.createNamedQuery('remittance:exportAFControls').setParameter('objid', objid).resultList 
+	}
+	
+	@ProxyMethod 
+	public def exportCraafCredits( objid ) {
+		return em.sqlContext.createNamedQuery('remittance:exportCraafCredits').setParameter('objid', objid).resultList 
+	}
+	
+	@ProxyMethod 
+	public def exportReceiptItems( objid ) {
+		return em.sqlContext.createNamedQuery('remittance:exportReceiptItem').setParameter('objid', objid).resultList 
+	}
+	
+	@ProxyMethod 
+	public def exportPaymentItems( objid ) {
+		return em.sqlContext.createNamedQuery('remittance:exportPaymentItem').setParameter('objid', objid)
+				.resultList.each {
+					it.extended = em.serializer.read( it.extended )
+				}
+	}
+	
+	
+	
+	/*-----------------------------------------------------
+	*
+	* Import Support
+	*
+	-------------------------------------------------------*/
+	@ProxyMethod
+	public void postImportRemittance( data ) {
+		validateImportRemittance( data ) 
+		
+		data.remittance.postedby = env.USERNAME 
+		data.remittance.dtposted = dtsvc.serverDate 
+		em.create( REMITTANCE_IMPORT_SCHEMA, data.remittance)
+		
+		em.create(SCHEMA_NAME, data.remittance )
+		
+		data.remittedforms.each { rf ->
+			def importedafc = data.afcontrols.find{ a -> a.objid == rf.afcontrolid  }
+			if( ! importedafc ) throw new Exception('Imported Accountable Form with stub no. ' + rf.stubno + ' does not exists.')
+			
+			//set the original afcontrolid 
+			def afc = getOrigAFControlByImportedAFControl( importedafc )
+			rf.afcontrolid = afc.objid 
+			em.create(REMITTED_FORM_SCHEMA_NAME, rf )
+		}
+		
+		postImportedAFControls( data ) 
+		
+		data.receiptlists.each { receipt ->
+			def afc = data.afcontrols.find{ it.origafcontrolid == receipt.afcontrolid}
+			if( ! afc ) throw new Exception('Cannot load original AF Control.')
+			receipt.afcontrolid = afc.objid 
+		}
+		 
+		rctsvc.createImportedReceipt( data )
+		postToRevenue( data.remittance )
+	}
+	
+	// when posting the remittedform, update the corresponding afcontrol information
+	//   * afcontrolid - this might be different if the afcontrol record is encoded using the afcontrol facility
+	//                   (query using the afid, collectorid and the endseries)
+    //   * currentseries, beginseries, balance 	
+	void postImportedAFControls( data ) {
+		data.afcontrols.each { importedafc ->
+			def importedcredit = data.craafcredits.find{a -> a.afinventorycreditid == importedafc.afinventorycreditid}
+			if( ! importedcredit ) throw new Exception('Imported Craaf Credit with ID No. ' + importedafc.afinventorycreditid + ' does not exists.')
+			
+			//update afcontrol based on the imported info 
+			def afc = getOrigAFControlByImportedAFControl( importedafc )
+			importedafc.origafcontrolid = importedafc.objid 
+			importedafc.objid = afc.objid 
+			importedafc.afinventorycreditid = afc.afinventorycreditid 
+			if( importedafc.cancelledseries  instanceof String ) {
+				importedafc.cancelledseries = em.serializer.read( importedafc.cancelledseries )
+			}
+			em.update( afc.schemaname, importedafc )
+			
+			//update craafcredits based on the imported info 
+			def craafcredit = em.sqlContext.createNamedQuery('remittance:getCraafCreditByInvCreditId')
+									.setParameter('afinventorycreditid', afc.afinventorycreditid)
+									.singleResult 
+			
+			if( ! craafcredit ) throw new Exception('Craaf Credit does not exists.')
+			
+			importedcredit.objid = craafcredit.objid 
+			importedcredit.stubno = afc.stubno  
+			importedcredit.afinventorycreditid = afc.afinventorycreditid 
+			em.update( importedcredit.schemaname, importedcredit )
+		}
+	}
+		
+	def getOrigAFControlByImportedAFControl( importedafc ) {
+		def afc = em.sqlContext.createNamedQuery('remittance:getAFControlByRemittedForm').setParameters( importedafc ).singleResult 
+		if( ! afc ) throw new Exception("Accountable Form No. ${importedafc.stubno} does not exists or was deleted.")
+		return afc 
+	}
+	
+	void validateImportRemittance( data ) {
+		checkDuplicateImportPosting( data.remittance.objid )
+		if( ! data.remittedforms ) throw new Exception('At least one (1) remitted form is required.')
+		if( ! data.receiptlists ) throw new Exception('At least one (1) receipt is required.')
+		if( ! data.receiptitems ) throw new Exception('At least one (1) receipt item is required.')
+		if( ! data.paymentitems ) throw new Exception('At least one (1) payment item is required.')
+		
+		validateMismatchAFControlSeries( data )
+	}
+	
+	// check that all afcontrol series has not been changed since the last remittance
+	// therefore afcontrol.currentseries = remittedform.beginfrom 
+	void validateMismatchAFControlSeries( data ) {
+		data.afcontrols.each{ importedafc ->
+			def afc = getOrigAFControlByImportedAFControl( importedafc )
+			def rf = data.remittedforms.find{ it.afcontrolid == importedafc.objid }
+			if( ! rf ) throw new Exception('Remitted Form with stub no. ' + importedafc.stubno + ' does not exists.')
+			
+			def balance = (rf.beginqty != null && rf.beginqty > 0 ? rf.beginqty : rf.receivedqty )
+			if( afc.balance  != balance ) {
+				throw new Exception('AF Control with Stub No. ' + afc.stubno + ' series mismatch is detected.\nVerify that the current series for this stub is equal to the start series of the imported remittance.')
+			}
+		}
+	}
+	
+	
+	@ProxyMethod
+	public void checkDuplicateImportPosting( objid ) {
+		//check duplicate posting 
+		def importedRem = em.sqlContext.createNamedQuery('remittance:getImportedRemittanceById')
+								.setParameter('objid', objid)
+								.singleResult 
+		if( importedRem ) throw new Exception('Remittance ' + importedRem.txnno + ' has already been imported.' )						
+		
+		def rem = em.sqlContext.createNamedQuery('remittance:getRemittanceById')
+								.setParameter('objid', objid)
+								.singleResult 
+		if( rem ) throw new Exception('Remittance ' + rem.txnno + ' is already existing.' )						
+	}
+	
+		
+	void postToRevenue( rem ) {
+		def params = [
+			remittanceid : rem.objid, 
+			timestamp    : dtsvc.buildCustomTimeStamp( rem.dtposted ) 
+		]
+		em.sqlContext.createNamedExecutor('revenue:postRemittance').setParameters( params ).execute()
+	}
+	
+	
+	@ProxyMethod  
+	public def getUnremittedReceipts( collectorid ) {
+		return em.sqlContext.createNamedQuery( "remittance:getUnremittedReceipts" ).setParameter( "collectorid", collectorid ).resultList;
+	}
+	
+	private def getUnremittedReceiptSummaryInfo( collectorid ) {
+		return em.sqlContext.createNamedQuery( "remittance:getUnremittedReceiptSummaryInfo" )
+					.setParameter( "collectorid", collectorid )
+					.singleResult
+	}
+	
+	private def createRemittedForms( rem ) {
+		def afctrls = em.sqlContext.createNamedQuery( "remittance:getAfControls" ).setParameters( [collectorid:rem.collectorid] ).resultList;
+		def remittedforms = [];
+		for (afctrl in afctrls) {
+			remittedforms += [
+				objid : "RF" + new UID(),
+				afcontrolid : afctrl.objid,
+				aftype : afctrl.aftype,
+				afid : afctrl.afid,
+				stubno : afctrl.stubno, 
+				receivedfrom 	: (afctrl.beginqty == null || afctrl.beginqty == 0) ? afctrlsvc.formatSeries( afctrl.startseries, afctrl.prefix, afctrl.suffix, afctrl.serieslength ) : null,
+				receivedto 		: (afctrl.beginqty == null || afctrl.beginqty == 0) ? afctrlsvc.formatSeries( afctrl.endseries, afctrl.prefix, afctrl.suffix, afctrl.serieslength ) : null,
+				receivedqty 	: (afctrl.beginqty == null || afctrl.beginqty == 0) ? afctrl.qtyreceived : null,
+				beginfrom 		: (afctrl.beginqty != null && afctrl.beginqty > 0) ? afctrlsvc.formatSeries( afctrl.beginseries, afctrl.prefix, afctrl.suffix, afctrl.serieslength ) : null,
+				beginto 		: (afctrl.beginqty != null && afctrl.beginqty > 0) ? afctrlsvc.formatSeries( afctrl.endseries, afctrl.prefix, afctrl.suffix, afctrl.serieslength ) : null,
+				beginqty 		: (afctrl.beginqty != null && afctrl.beginqty > 0) ? afctrl.beginqty : null,
+				issuedfrom 		: (afctrl.qtyissued != 0) ? afctrlsvc.formatSeries( afctrl.issuedfrom, afctrl.prefix, afctrl.suffix, afctrl.serieslength ) : null,
+				issuedto 		: (afctrl.qtyissued != 0) ? afctrlsvc.formatSeries( afctrl.issuedto, afctrl.prefix, afctrl.suffix, afctrl.serieslength ) : null,
+				issuedqty 		: (afctrl.qtyissued != 0) ? afctrl.qtyissued : null,
+				endingfrom 		: (afctrl.balance != 0) ? afctrlsvc.formatSeries( afctrl.currentseries, afctrl.prefix, afctrl.suffix, afctrl.serieslength ) : null,
+				endingto 		: (afctrl.balance != 0) ? afctrlsvc.formatSeries( afctrl.endseries, afctrl.prefix, afctrl.suffix, afctrl.serieslength ) : null,
+				endingqty 		: (afctrl.balance != 0) ? afctrl.balance : null
+			];
+		}
+		
+		return remittedforms;
+	}
+	
+	@ProxyMethod
+	public def getOpenCollectionSummaries( collectorid ){
+		return em.sqlContext.createNamedQuery("remittance:getOpenCollectionSummaries").setParameters( [collectorid:collectorid] ).resultList;
+	}
+	
+	def getListByQuery( namedQuery, criteria, params, pagingkeys = null ) {
+        if( ! params ) params = [ _start:0, _limit:25]
+		def qry = em.sqlContext.createNamedQuery( namedQuery )
+				    .setParameters( criteria )
+				    .setFirstResult( params._start )
+				    .setMaxResults( params._limit );
+				  
+		if( pagingkeys ) qry.setPagingKeys( pagingkeys );
+		
+		return qry.resultList
+	}
+	
+}

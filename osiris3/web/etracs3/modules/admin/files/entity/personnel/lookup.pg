@@ -1,0 +1,9 @@
+{
+	name:		'admin:personnel-lookup',
+	context:	'personnellookup',
+	title:		'Search Personnel',	
+	fragment: 	true,
+	hidden: 	true,
+	options:	{width:450, height:180}, 
+	master: 	'fragment_popup_form' 
+}

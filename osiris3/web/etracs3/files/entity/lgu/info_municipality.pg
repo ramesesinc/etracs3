@@ -1,0 +1,5 @@
+{
+	context:	'lgu',
+	fragment: 	true,
+	secured: 	true	
+}

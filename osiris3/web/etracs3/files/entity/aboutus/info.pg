@@ -1,0 +1,7 @@
+{
+	title: 		'About Us',
+	context:	'aboutus',
+	fragment: 	true,
+	secured:	true,
+	master: 	'fragment_document'
+}	

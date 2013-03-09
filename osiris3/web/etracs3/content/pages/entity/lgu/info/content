@@ -1,0 +1,116 @@
+<h2 style="margin:10px 5px 5px 0px;font-size:12pt;">LGU Information</h2>
+<table class="dataform" cellpadding="0" cellspacing="0">
+<tr>
+	<td width="100">Index No.:</td>
+	<td> <div class="textfield-appearance" style="width:300px;"><label r:context="$PAGE.context" r:name="entity.indexno"/>&nbsp;</div> </td> 
+</tr> 
+<tr>
+	<td>Name:</td>
+	<td> <div class="textfield-appearance"><label r:context="$PAGE.context" r:name="entity.lguname"/>&nbsp;</div> </td> 
+</tr> 
+</table> 
+
+<table cellpadding="0" cellspacing="0" width="100%">
+<tr>
+	<td valign="top">
+		<table>
+		<tr>
+			<td>
+				<h2 style="margin:0px 5px 5px 0px;font-size:12pt;">
+					<span r:type="label" r:context="${context}">#{entity.lgutype == 'PROVINCE'? 'Municipality' : 'District'} Information</span>
+				</h2>
+			</td>
+			<td>
+				<button r:context="${context}" r:name="addDistrict" icon="rui-icon rui-icon-create">Add</button>
+			</td>
+		</tr>
+		</table> 
+		
+		<table class="grid" r:context="${context}" r:model="districtModel" r:name="selectedDistrict" r:varName="item" cellpadding="0" cellspacing="0" border="0" width="100%">
+		<thead>
+			<th width="100" style="white-space:nowrap;">Index No.</th> 
+			<th width="300">Name</th> 
+			<th style="width:30px;">&nbsp;</th> 	
+			<th style="width:30px;">&nbsp;</th> 		
+			<th>&nbsp;</th> 
+		</thead> 
+		<tbody>
+			<tr>
+				<td>#{item.indexno}</td> 
+				<td>#{item.lguname}</td> 
+				<td align="center">
+					<a r:context="${context}" r:name="editDistrict" title="Edit">
+						<img src="/res/admin/edit.gif"/>
+					</a>		
+				</td> 
+				<td align="center">
+					<a r:context="${context}" r:name="removeDistrict" title="Remove">
+						<img src="/res/admin/trash.gif"/>
+					</a>		
+				</td> 
+				<td>&nbsp;</td> 
+			</tr> 
+		</tbody> 
+		</table>
+		<div>
+			<button r:context="${PAGE.context}" r:name="districtModel.moveFirst" icon="rui-button-icon12 rui-icon-navfirst12" title="Go to first page"/>
+			<button r:context="${PAGE.context}" r:name="districtModel.movePrev"  icon="rui-button-icon12 rui-icon-navprev12" title="Go to previous page"/>
+			<button r:context="${PAGE.context}" r:name="districtModel.moveNext"  icon="rui-button-icon12 rui-icon-navnext12" title="Go to next page"/>
+		</div>
+	</td>
+	<td valign="top">
+		<table>
+			<tr>
+				<td><h3>Barangay Information</h3></td>
+				<td>
+					<button r:context="${context}" r:name="addBarangay" r:visibleWhen="#{selectedDistrict}" r:depends="selectedDistrict" icon="rui-icon rui-icon-create">Add</button>
+				</td>
+			</tr>
+		</table>
+		
+		<table class="grid" r:context="${context}" r:model="barangayModel" r:name="selectedBarangay" r:varName="item" cellpadding="0" cellspacing="0" border="0" width="100%">
+		<thead>
+			<th width="100" style="white-space:nowrap;">Index No.</th> 
+			<th width="300">Name</th> 
+			<th width="50" style="white-space:nowrap;">Has Org?</th>
+			<th style="width:30px;">&nbsp;</th> 	
+			<th style="width:30px;">&nbsp;</th> 		
+			<th>&nbsp;</th> 
+		</thead> 
+		<tbody>
+			<tr>
+				<td>#{item.indexno}</td> 
+				<td>#{item.lguname}</td> 
+				<td align="center">
+					<label r:context="${context}" r:visibleWhen="#{!!item.orgunit}">
+						<img src="/res/admin/checked.png"/>
+					</label>
+					<label r:context="${context}" r:visibleWhen="#{!item.orgunit}">
+						<img src="/res/admin/unchecked.png"/>
+					</label>		
+				</td> 
+				<td align="center">
+					<a r:context="${context}" r:name="editBarangay" title="Edit">
+						<img src="/res/admin/edit.gif"/>
+					</a>		
+				</td> 
+				<td align="center">
+					<a r:context="${context}" r:name="removeBarangay" title="Remove">
+						<img src="/res/admin/trash.gif"/>
+					</a>		
+				</td> 
+				<td>&nbsp;</td> 
+			</tr> 
+		</tbody> 
+		</table>
+		</table>		
+		
+		<div>
+			<button r:context="${PAGE.context}" r:name="barangayModel.moveFirst" icon="rui-button-icon12 rui-icon-navfirst12" title="Go to first page"/>
+			<button r:context="${PAGE.context}" r:name="barangayModel.movePrev"  icon="rui-button-icon12 rui-icon-navprev12" title="Go to previous page"/>
+			<button r:context="${PAGE.context}" r:name="barangayModel.moveNext"  icon="rui-button-icon12 rui-icon-navnext12" title="Go to next page"/>
+		</div>		
+	</td>
+</tr>
+</table>
+

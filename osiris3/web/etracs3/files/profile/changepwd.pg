@@ -1,0 +1,5 @@
+{
+	title:		"Change Password", 
+	sortorder:	5, 	
+	fragment: 	true 
+}

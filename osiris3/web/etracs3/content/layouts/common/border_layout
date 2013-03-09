@@ -1,0 +1,31 @@
+<%
+	def north_content = ANUBIS.getBlock('north')?.toString().trim(); 
+	def south_content = ANUBIS.getBlock('south')?.toString().trim(); 
+	def east_content = ANUBIS.getBlock('east')?.toString().trim(); 
+	def west_content = ANUBIS.getBlock('west')?.toString().trim(); 
+%> 
+<table cellpadding="0" cellspacing="0" width="100%" height="100%" border="0">
+<% if (north_content) { %> 
+	<tr>
+		<td colspan="3"> ${north_content} </td>
+	</tr>
+<% } %> 
+
+<tr>
+<% if (west_content) { %> 
+	<td> ${west_content} </td>
+<% } %> 
+
+	<td valign="top" style="width:100%;height:100%;"> ${_content} </td>
+	
+<% if (east_content) { %> 	
+	<td style="width:0px;"> ${east_content} </td>
+<% } %> 	
+</tr>
+
+<% if (south_content) { %> 
+	<tr>
+		<td colspan="3"> ${south_content} </td>
+	</tr>
+<% } %> 	
+</table>

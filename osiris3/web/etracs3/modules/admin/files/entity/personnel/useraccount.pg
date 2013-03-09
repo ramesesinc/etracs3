@@ -1,0 +1,8 @@
+{
+	title:		'Create User Account',
+	context:	'useraccount',
+	fragment: 	true,
+	
+	master: 	'fragment_popup_form',
+	options:	{width:500, height:300}
+}

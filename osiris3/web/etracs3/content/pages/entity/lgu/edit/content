@@ -1,0 +1,78 @@
+<script>
+	\$put( '${PAGE.context}', new function() { 
+		this.entity = {};
+		this.saveHandler;
+		this.reloadHandler;
+		this.lgutype;
+		
+		this.cancel = function() {
+			if (confirm("Are you sure you want to close this window?")) 
+				return '_close';
+		} 		
+		
+		this.save = function() {
+			if( this.saveHandler )
+				this.saveHandler( this.entity );
+			return '_close';
+		}
+		
+		this.registerOrgunit = function() {
+			var svc = Service.lookup( "etracs/OrgunitService" );
+			var lgu = {
+				objid: this.entity.objid,
+				code: this.entity.indexno,
+				title: this.entity.formalname,
+				orgtype: "BARANGAY",
+				reftype: "BARANGAY",
+				refid: this.entity.objid
+			}
+			svc.saveCreate(lgu);
+			this.entity.orgunit = lgu.objid;
+			
+			if (this.reloadHandler) this.reloadHandler(); 			
+		}
+		
+		this.unregisterOrgunit = function() {
+			if( confirm('You are about to unregister this from the orgunit. Proceed?') ) {
+				var svc = Service.lookup( "etracs/OrgunitService" );
+				svc.remove({objid: this.entity.objid});
+				this.entity.orgunit = null;
+				
+				if (this.reloadHandler) this.reloadHandler(); 
+			}
+		}
+	});
+</script>
+
+<div r:dockTo="footer-actions">
+	<button r:context="${PAGE.context}" r:name="save" icon="rui-icon rui-icon-save">Save</button>
+	<button r:context="${PAGE.context}" r:name="cancel" icon="rui-icon rui-icon-cancel" r:immediate="true">Cancel</button>
+</div> 
+
+<table cellpadding="0" cellspacing="0" width="100%" height="100%">
+<tr>
+	<td valign="top">
+		<table class="dataform" cellpadding="0" cellspacing="0">
+		<tr> 	
+			<td width="100">Index No.: </td> 
+			<td> 
+				<input type="text" r:context="${PAGE.context}" r:name="entity.indexno" r:required="true" style="width:100px;"/>
+			</td> 	
+		</tr>
+		<tr> 	
+			<td>Name: </td> 
+			<td> 
+				<input type="text" r:context="${PAGE.context}" r:name="entity.lguname" r:required="true" style="width:300px;"/>
+			</td> 	
+		</tr>
+		</table> 
+
+		<% if ( PARAMS.lgutype == "Barangay" ) { %>
+			<br>
+			<a r:context="${PAGE.context}" r:name="registerOrgunit" r:visibleWhen="#{!entity.orgunit}">Register OrgUnit</a>
+			<a r:context="${PAGE.context}" r:name="unregisterOrgunit" r:visibleWhen="#{entity.orgunit}">Unregister OrgUnit</a>
+		<% } %>	
+	</td> 
+</tr> 
+</table> 
+

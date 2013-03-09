@@ -1,0 +1,47 @@
+<%
+	def section = OPTIONS.value;
+	if (!section) section = OPTIONS;
+	if (OPTIONS.actions) section.actions = OPTIONS.actions; 
+%>
+<div class="section-header" <%if (section.styleId) {%>id="${section.styleId}"<%}%>>
+	<table cellpadding="0" cellspacing="0" width="100%" border="0">
+	<tr>
+		<%if (section.icon) {%>  
+			<td class="section-header-icon">
+				<img src="${section.icon}" <%if (section.iconWidth) {%>width="${section.iconWidth}"<%}%> <%if (section.iconHeight) {%>height="${section.iconHeight}"<%}%>/>
+			</td>
+		<%}%>
+		
+		<td class="section-header-title"> ${section.title} </td>
+		<td class="section-header-body" style="width:100%;"> 	
+		<%
+			if (section.actions) 
+			{ 
+				while (!section.actions.isEmpty()) 
+				{ 
+					def item = section.actions.remove(0); 
+					if (item.name == 'separator') 
+					{
+						def attrs = ["r:context=\"${item.context}\""];
+						if (item.visibleWhen) attrs.add("r:visibleWhen=\"${item.visibleWhen}\"");
+						
+						println "<span " + attrs.join(" ") + "> | </span>"; 
+						attrs.clear();
+					} 
+					else 
+					{
+						def attrs = ["r:context=\"${item.context}\"", "r:name=\"${item.name}\""];
+						if (item.visibleWhen) attrs.add("r:visibleWhen=\"${item.visibleWhen}\"");
+						if (item.immediate) attrs.add("r:immediate=\"${item.immediate}\"");
+						
+						println "<a class=\"basicmenu\"" + attrs.join(" ") + " style=\"text-decoration:underline;font-size:9pt;\">${item.title}</a>"; 
+						attrs.clear();
+					} 
+				}
+			}
+		%>
+		</td>
+	</tr>
+	</table> 
+	<hr class="section-header-border"/> 
+</div>

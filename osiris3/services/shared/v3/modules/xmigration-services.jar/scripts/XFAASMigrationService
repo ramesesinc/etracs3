@@ -1,0 +1,173 @@
+import com.rameses.common.*
+import com.rameses.annotations.*
+
+public class XFAASMigrationService
+{
+	@PersistenceContext('main')
+	def em
+	
+	@PersistenceContext('bayombong')	
+	def embay
+	
+	@ProxyMethod
+	public def rebuildRpu( tdno ) {
+		def rpu = embay.sqlContext.createNamedQuery('faasmigration:getRpu')
+						.setParameter('tdno', tdno)
+						.singleResult 
+		if( ! rpu ) throw new Exception('TD No. ' + tdno + ' does not exists.')
+		
+		if( 'land'.equals( rpu.rputype ) ) {
+			buildLandRpu( rpu ) 
+		}
+		else if( 'bldg'.equals( rpu.rputype ) ) {
+			buildBldgRpu( rpu ) 
+		}
+		else if( 'mach'.equals( rpu.rputype ) ) {
+			buildMachRpu( rpu ) 
+		}
+		else if( 'plant'.equals( rpu.rputype ) ) {
+			buildPlantTreeRpu( rpu ) 
+		}
+		else if( 'misc'.equals( rpu.rputype ) ) {
+			buildMiscRpu( rpu ) 
+		}
+		else {
+			throw new Exception("RPU Type ${rpu.rputype} is not defined.")
+		}
+		
+		
+		em.sqlContext.createNamedExecutor('faasmigration:updateRpuInfo')
+						.setParameter('faasid', rpu.faasid )
+						.setParameter('rpu', em.serializer.write( rpu ))
+						.execute()
+		return rpu 
+	}
+	
+	def buildLandRpu( rpu ){
+		rpu.info = embay.sqlContext.createNamedQuery('faasmigration:getLandInfo')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+						
+		rpu.info.landdetails = embay.sqlContext.createNamedQuery('faasmigration:getLandDetails')
+						.setParameter('rpuid', rpu.objid)
+						.resultList
+						.each{
+							it.landadjustments = []
+							it.adjustments = []
+						}
+						
+		rpu.info.landtotal = embay.sqlContext.createNamedQuery('faasmigration:getLandTotal')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		
+		rpu.info.planttrees = embay.sqlContext.createNamedQuery('faasmigration:getPlantTrees')
+						.setParameter('rpuid', rpu.objid)
+						.resultList 
+						
+		rpu.info.planttotal = embay.sqlContext.createNamedQuery('faasmigration:getPlantTotal')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+						
+		rpu.info.adjustments = embay.sqlContext.createNamedQuery('faasmigration:getLandAdjustments')
+						.setParameter('rpuid', rpu.objid)
+						.resultList.each {
+							it.params = []
+						}
+		return rpu 
+	}
+	
+	
+	def buildBldgRpu( rpu ){
+		rpu.info = embay.sqlContext.createNamedQuery('faasmigration:getBldgInfo')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+						
+		rpu.info.bldgtype = embay.sqlContext.createNamedQuery('faasmigration:getBldgType')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		rpu.info.bldgtype.depreciations = []
+		rpu.info.bldgtype.multistoreyadjustments = [] 
+		
+		rpu.info.bldgkindbucc = embay.sqlContext.createNamedQuery('faasmigration:getBldgKindBucc')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		
+		def bldguses = embay.sqlContext.createNamedQuery('faasmigration:getBldgUses')
+						.setParameter('rpuid', rpu.objid)
+						.resultList
+						
+		bldguses.each{ bu ->
+			def floors = embay.sqlContext.createNamedQuery('faasmigration:getFloors')
+								.setParameter('bldguseid', bu.objid )
+								.resultList 
+			floors.each{ floor ->
+				floor.additionalitems = embay.sqlContext.createNamedQuery('faasmigration:getBldgAddlItems')
+											.setParameter('floorid', floor.objid )
+											.resultList.each {
+												it.params = []
+											}
+			}
+			bu.floors = floors 
+		}
+						
+		rpu.info.bldguses = bldguses
+		
+		rpu.info.bldgstructures = embay.sqlContext.createNamedQuery('faasmigration:getStructures')
+						.setParameter('rpuid', rpu.objid)
+						.resultList
+		
+		return rpu 
+	}
+	
+	def buildMachRpu( rpu ){
+		rpu.info = [:]
+		
+		def machuses = embay.sqlContext.createNamedQuery('faasmigration:getMachUses')
+							.setParameter('rpuid', rpu.objid)
+							.resultList
+							
+		machuses.each { machuse ->
+			machuse.actualuse = embay.sqlContext.createNamedQuery('faasmigration:getMachActualUse')
+								.setParameter('rpuid', rpu.objid)
+								.setParameter('actualuseid', machuse.actualuseid )
+								.singleResult 
+								
+			def machdetails = embay.sqlContext.createNamedQuery('faasmigration:getMachDetails')
+								.setParameter('machuseid', machuse.objid )
+								.resultList
+			
+			machuse.machdetails = machdetails
+		}
+		
+		rpu.info.machuses = machuses 
+		return rpu 
+	}
+
+	
+	def buildPlantTreeRpu( rpu ){
+		rpu.info = embay.sqlContext.createNamedQuery('faasmigration:getPlantTreeInfo')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		
+		rpu.info.planttreedetails = embay.sqlContext.createNamedQuery('faasmigration:getPlantTrees')
+						.setParameter('rpuid', rpu.objid)
+						.resultList 
+		
+		return rpu 
+	}
+	
+	def buildMiscRpu( rpu ){
+		rpu.info = embay.sqlContext.createNamedQuery('faasmigration:getMiscInfo')
+						.setParameter('rpuid', rpu.objid)
+						.singleResult
+		
+		rpu.info.miscrpuitems = embay.sqlContext.createNamedQuery('faasmigration:getMiscItems')
+						.setParameter('rpuid', rpu.objid)
+						.resultList.each {
+							it.params = []
+						}
+		
+		return rpu 
+	}
+	
+}

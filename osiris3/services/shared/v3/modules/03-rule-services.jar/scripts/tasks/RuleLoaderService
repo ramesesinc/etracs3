@@ -1,0 +1,29 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import java.rmi.server.UID
+
+class RuleLoaderService {
+
+	@PersistenceContext('system')
+	def em
+	
+	@Resource('RuleService')
+	def ruleSvc; 
+	
+	@Schedule
+	public def loadRules(tsk) {
+		def list = ruleSvc.ruleContexts;
+		list.each { c->
+			def m = [name: c.name, type:'rules'];
+			em.sqlContext.createNamedQuery("ruleserver:get-rules").setParameters( m ).resultList.each { r->
+				try {
+					ruleSvc.addRulePackage( c.name, new java.io.StringReader( r.content ) );
+				}
+				catch(e) {
+					e.printStackTrace();
+				}
+			}
+		}	
+	}	
+}
+
