@@ -1,0 +1,27 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/treasury" caption="Discount Types" role="MASTER_ENCODER" permission="discounttype.view" target="window" index="100" />
+        <invoker type="quick_launcher" code="DT00" caption="Discount Types" role="MASTER_ENCODER" permission="discounttype.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class DiscountTypeMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'DiscountTypeService'
+            String objectName  = 'discounttype'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"objid", caption:"Code"),
+                    new Column(name:"discounttype", caption:"Discount Type"),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

@@ -1,0 +1,30 @@
+import com.rameses.annotations.*;
+import com.rameses.common.*
+
+
+class RemoteOutboxService
+{
+	@Service('DomainService')
+	def domainSvc
+	
+	@Service('MessagingService')
+	def msgSvc
+	
+	def OUTBOX_SCHEMA = 'message:outbox'
+	def PROCESSEDOUTBOX_SCHEMA = 'message:processedoutbox'
+	
+	@ProxyMethod
+	public def fetchMessage( params ) {
+		def receiver = params.receiver 
+		domainSvc.connected( receiver.id, receiver.name, receiver.type, [:])
+		return msgSvc.getOutboxMessagesByReceiver( receiver.id ) 
+	}
+	
+	@ProxyMethod
+	public def fetchSuccess( msgid ) {
+		def msg = msgSvc.getOutboxMessage( msgid )
+		msgSvc.deliveredSuccessfully( msg )
+	}
+	
+	
+}

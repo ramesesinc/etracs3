@@ -1,0 +1,108 @@
+import com.rameses.annotations.*
+import com.rameses.eserver.*;
+import com.rameses.common.*;
+
+class FAASServiceInterceptor
+{
+	@PersistenceContext('main')
+	def em
+    
+	@Service('FAASService')
+	def faasSvc 
+	
+	@Service('MessagingService')
+	def msgSvc
+	
+	@Service('Var')
+	def var 
+	
+	@Service('ETRACSUtilService')
+	def utilSvc
+	
+	@Service('EntityService')
+	def entitySvc 
+	
+	
+	/*==============================================================
+	** LOCAL INTERCEPTORS 
+	==============================================================*/
+	@After(pattern='FAASService.submitToProvince.*') 
+	public void interceptSubmitToProvince( evt ) {
+		def faas = evt.result 
+		
+		if( remoteSubmissionAllowed( faas ) == false )
+			return 
+		
+		def attachments = faasSvc.getAttachments( faas.objid)
+		def data = [ 
+			faas		: faas, 
+			attachments	: attachments,
+			entity		: entitySvc.open( faas.info.taxpayerid, null  ),
+		]
+		msgSvc.sendMessage( 'faas.receive', 'Send FAAS ' + faas.info.tdno + ' to remote.', data  )
+	}
+	
+	@After(pattern='FAASService.approveRemote.*') 
+	public void interceptApproveRemote( evt ) {
+		def faas = evt.result 
+		if( remoteSubmissionAllowed( faas ) == false ) 
+			return 
+			
+		 def data = [
+			faasid			: faas.objid,
+			docstate		: faas.docstate,
+			approvedby		: faas.info.approvedby,
+			approvedbytitle : faas.info.approvedbytitle,
+			dtapproved		: faas.info.dtapproved,
+			tdno			: faas.info.tdno,
+			pin				: faas.rp.pin,
+			fullpin			: faas.rpu.fullpin, 
+		]
+		
+		def msg = msgSvc.createMessage( 'faas.approve', 'Approve FAAS ' + faas.info.tdno  + '.', data  )
+		updateRemoteReceiverInfo( faas, msg )
+		msgSvc.send( msg )
+	}
+	
+	@After(pattern='FAASService.disapproveRemote.*') 
+	public void interceptDisapproveRemote( evt ) {
+		def faas = evt.result 
+		if( remoteSubmissionAllowed( faas ) == false ) 
+			return 
+			
+		def data = [
+			faasid		: faas.objid,
+			tdno		: faas.info.tdno,
+			pin			: faas.rp.pin,
+			fullpin		: faas.rpu.fullpin, 
+			message		: faas.message 	
+		]
+		
+		def msg = msgSvc.createMessage( 'faas.disapprove', 'Disapprove FAAS ' + faas.info.tdno + '.', data  )
+		updateRemoteReceiverInfo( faas, msg )
+		msgSvc.send( msg )
+	}
+	
+	
+	
+	void updateRemoteReceiverInfo( faas, msg  ) {
+		def receiverid = faas.rp.provcityindex + '-' + faas.rp.munidistrictindex
+		def receivername = faas.rp.munidistrict
+		msg.receiverid = receiverid 
+		msg.receiver  = [id:receiverid, name:receivername, type:faas.lgutype ]
+    }
+	
+	boolean remoteSubmissionAllowed( faas ) {
+		def remote_connection_active = utilSvc.toBoolean( var.remote_connection_active, false ) 
+		def remote_connection_debug = utilSvc.toBoolean( var.remote_connection_debug, false )  
+		
+		if( ( faas.info.datacapture == false || remote_connection_debug == true ) 
+			&& remote_connection_active == true) {
+				return true 
+		}
+		return false 
+	}
+	
+}
+
+

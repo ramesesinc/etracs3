@@ -1,0 +1,15 @@
+"entity.*|entity.info.*|selectedContact|selectedCard" [mode == 'view'] {
+    readonly:true;
+}
+
+"entity.*|entity.info.*|selectedContact|selectedCard" [mode != 'view'] {
+    readonly:false;
+}
+
+"addContact|addCard" [mode == 'view'] {
+    enabled:false;
+}
+
+"addContact|addCard" [mode != 'view'] {
+    enabled:true;
+}

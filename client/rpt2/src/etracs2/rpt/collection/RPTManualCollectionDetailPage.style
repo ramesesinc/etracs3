@@ -1,0 +1,23 @@
+"basic.*|item.sef.*" [ true == true ]{
+    enabled:false;
+}
+
+"basic|basicdisc|basicint|item.sef|item.sefdisc|item.sefint" [ allowEditCurrent == true ]{
+    enabled:true;
+}
+
+"basicadv|basicadvdisc|item.sefadv|item.sefadvdisc" [ allowEditAdvance == true ]{
+    enabled:true;
+}
+
+"basicpr.*|item.sefpr.*" [ allowEditPrevious == true ]{
+    enabled:true;
+}
+
+"item.municity" [ lgutype != 'city' ] {
+    enabled:true;
+}
+
+"item.municity" [ lgutype == 'city' ] {
+    enabled:false;
+}

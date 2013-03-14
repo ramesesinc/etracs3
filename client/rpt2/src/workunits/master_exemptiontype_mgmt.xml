@@ -1,0 +1,28 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/rpt" caption="Exemption Types" role="MASTER_ENCODER" permission="exemptiontype.view" target="window" index="2" />
+        <invoker type="quick_launcher" code="ET00" caption="Exemption Types" role="MASTER_ENCODER" permission="exemptiontype.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class ExemptionTypeMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'ExemptionTypesService'
+            String objectName = 'exemptiontype'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"exemptcode", caption:"Code", minWidth:40),
+                    new Column(name:"exemptdesc", caption:"Exemption Type", minWidth:170),
+                    new Column(name:"orderno", caption:"Order No.", minWidth:30),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    <invokers>
+        <invoker type="faasattachment.open" action="open" />
+        <invoker type="formActions" action="_close" caption="Back" mnemonic="b" shortcut="ctrl B" icon="images/back.png" />
+        <invoker type="formActions" action="addAttachment" caption="Add" mnemonic="a" shortcut="ctrl A" icon="images/doc-add.png" />
+        
+        <invoker type="viewActions" action="_default" caption="Back" mnemonic="b" shortcut="ctrl B" icon="images/back.png" />
+    </invokers>
+    <code lang="groovy">
+<![CDATA[
+
+import com.rameses.rcp.annotations.*
+import com.rameses.rcp.common.*
+import com.rameses.osiris2.client.*
+import java.rmi.server.UID
+import com.rameses.io.FileTransfer
+import com.rameses.invoker.client.DynamicHttpTransfer
+import java.io.*
+import etracs2.groovy.*
+import etracs2.rpt.groovy.*
+import com.rameses.rcp.framework.TaskManager;
+import com.rameses.uploader.*
+import com.rameses.io.FileUtil;
+import javax.swing.JFileChooser;
+
+
+
+public class FAASAttachmentController {
+    @Binding
+    def binding
+    
+    @Service('FAASService')
+    def faasSvc
+    
+    @Service('ETRACSFileTransferService')
+    def svc 
+    
+    @Service('Var')
+    def var
+
+    def faas 
+    def selectedItem
+    def attachments
+    def caption 
+    
+    
+    void open() {
+        caption = 'Attachment for PIN No. ' + faas.rpu.fullpin 
+        attachments = faasSvc.getAttachments( faas.objid )
+    }
+    
+    def getHtml() {
+        return faasSvc.buildHtml( faas.objid )
+    }
+    
+    def listHandler = [
+        getRows    : { return 25 },
+        getColumns : { return [
+            new Column(name:'type', caption:'Attachment', width:300),
+            new Column(name:'docstate', caption:'State', width:110),
+            new Column(name:'remarks', caption:'Remarks', width:200),
+        ]},
+        onOpenItem   : { item, colname -> viewAttachment() },
+        fetchList : { return attachments },
+    ] as SubListModel
+    
+    void setSelectedItem( selectedItem ) {
+        this.selectedItem = selectedItem
+    }
+
+    void removeCachedDirectory() {
+        def cacheinitialized = OsirisContext.clientContext.properties.cache_initialized
+        if( cacheinitialized ) return 
+        try {
+            def cachedir = getCacheDirectory()
+            def file = new File( cachedir )
+            if( file.isDirectory() ) {
+                file.listFiles().each { f ->
+                    f.delete()
+                }
+            }
+        }
+        catch( e ) {
+            println 'removeCachedDirectory() error'
+            e.printStackTrace()
+        }
+    }
+    
+    def resolveFileName( filename ) {
+        def cachedir = getCacheDirectory()
+        def dir = new File( cachedir )
+        if( !dir.exists() ) {
+            dir.mkdir()
+            OsirisContext.clientContext.properties.cache_initialized = true 
+        }
+        return cachedir + '/' + filename 
+    }
+    
+    def getCacheDirectory() {
+        return System.properties['user.dir'] + '/cache' 
+    }
+    
+    def getImageUrl() {
+        // return new File( resolveFileName(selectedItem.filename) )
+        def url = "http://" + var.server_address + '/fileupload/DownloadServlet?'
+        url += 'directory=' + selectedItem.directory + '&filename=' + selectedItem.filename
+        println 'URL -> ' + url
+        return new URL( url )
+    }
+    
+    def viewAttachment() {
+        /*
+        if( ! selectedItem ) return null 
+        def file = new File( resolveFileName( selectedItem.filename ) )
+        println 'FILE -> ' + file 
+        if( ! file.exists() ) {
+            downloadFile( selectedItem )
+        }
+        */
+        return 'view'
+    }
+    
+    /*----------------------------------------------------------------------
+    *
+    * Attachment Support 
+    *
+    *-----------------------------------------------------------------------*/
+    def attachment
+    def file
+    def selectedFile
+    def newAttachments 
+    
+    
+    void deleteAttachment( ) {
+        if( selectedItem && MsgBox.confirm('Delete attachment?') ) {
+            faasSvc.removeAttachment( faas.objid, selectedItem.objid )
+            attachments.remove( selectedItem )
+            listHandler.load()
+        }
+    }
+    
+    def addAttachment() {
+        createAttachment()
+        return 'attachment' 
+    }
+    
+    def createAttachment() {
+        attachment = [objid: 'FA' + new UID(), docstate:'INTERIM']
+        return attachment 
+    }
+    
+    def filelistHandler = [
+        getRows    : {return 50 },
+        getColumns : { return [
+            new Column(name:'_filename', caption:'File Name'),
+            new Column(name:'type', caption:'Attachment Type*', editable:true),
+            new Column(name:'remarks', caption:'Remarks', editable:true),
+            new Column(name:'uploaded', caption:'Uploaded?', type:'boolean'),
+        ]},
+        fetchList  :{ return newAttachments },
+    ] as SubListModel 
+    
+    
+    void addFiles(){
+        newAttachments = []
+        JFileChooser jfc = new JFileChooser();
+        jfc.setMultiSelectionEnabled(true);
+        jfc.addChoosableFileFilter( new AttachmentFilter() );
+        jfc.showOpenDialog(null);
+        
+        def files = jfc.getSelectedFiles();
+        if( files ) {
+            files.each{ newfile ->
+                if( ! newfile.isDirectory() ) {
+                    def attachment = createAttachment()
+                    attachment.file      = newfile
+                    attachment.faasid    = faas.objid
+                    attachment._filename = newfile.name
+                    attachment.filename  = makeSafeFileName( attachment.objid ) + getFileExtension( newfile )
+                    attachment.directory = makeSafeFileName( faas.objid ) 
+                    attachment.uploaded  = false
+                    newAttachments.add( attachment )
+                }
+            }
+            filelistHandler.load()
+        }
+    }
+    
+    
+    
+    /* ========================================================== */
+    /*  Temporary : create this as a helper class */
+    /* ========================================================== */
+    
+    def msg
+    def displaymsg 
+    def stopped = true 
+    def taskmgr 
+    def timertask
+    def uploadTask
+            
+    def ontimer = {
+        if( ! stopped ) {
+            updateMessage()
+        }
+    }
+    
+    void updateMessage() {
+        if( displaymsg ) {
+            displaymsg = false
+            showMessage('')
+        }
+        else {
+            displaymsg = true
+            showMessage( 'Uploading document. Please wait...'  )
+        }
+    }
+    
+    void showMessage( msg ) {
+        this.msg = msg
+        binding.refresh('msg')
+    }
+        
+    def doCancel() {
+        if( ! stopped ) {
+            stopTimer()
+        }
+        else {
+            return 'default'
+        }
+    }
+    
+    
+    void startTimer() {
+        stopped = false
+        taskmgr = new TaskManager()
+        timertask = new TTimerTask( ontimer : ontimer, sleeptime:1000)
+        uploadTask = new UploadTask( parent:this )
+        taskmgr.addTask( timertask )
+        taskmgr.addTask( uploadTask )
+        taskmgr.start()   
+    }
+    
+    void stopTimer( ) {
+        stopped = true 
+        displaymsg = false
+        timertask.setCancelled( true )
+        timertask.setEnded( true )
+        uploadTask.setCancelled( true )
+        uploadTask.setEnded(true)
+        taskmgr?.removeTask( timertask )
+        taskmgr?.removeTask( uploadTask )
+        taskmgr?.stop()
+        taskmgr = null
+        timertask = null
+        showMessage('')
+    }
+
+    
+    
+    void upload() {
+        validateAttachments()
+        startTimer()
+    }
+    
+    void validateAttachments() {
+        newAttachments.each{ 
+            validateExtension( it.file )
+            if( ! it.type ) throw new Exception('Attachment Type for file ' + it._filename + ' is required.')
+        }
+    }
+    
+    void validateExtension( file ) {
+        def extn = getFileExtension( file )
+        extn = extn.replace('.','')
+        if( 'jpg/jpeg/png/bmp/gif/pdf'.indexOf( extn ) < 0 ) {
+            throw new Exception('File to upload is invalid.\nOnly the following extensions are supported: jpg, jpeg, png, bmp, gif and pdf.')
+        }
+    }
+    
+    def getFileExtension( file ) {
+        def ext = ''
+        if( file && file.exists()) {
+            def filename = file.absolutePath
+            int idx = filename.lastIndexOf(".")
+            if( idx >= 0 ) {
+                ext = '.' + filename.substring(idx+1, filename.length())
+            }
+        }
+        return ext.toLowerCase()
+    }
+    
+    void copyToCache( sourceFile, filename ) {
+        File targetFile = new File( resolveFileName( filename ) );
+        FileUtil.copy( sourceFile, targetFile)
+    }
+    
+    void downloadFile( attachment ) {
+        def app = getAppInfo()
+        
+        DynamicHttpTransfer.In handler = new DynamicHttpTransfer.In( app.host, app.context, 'ETRACSFileTransferService', 'downloadAttachment');
+        handler.getParameters().put('attachment', attachment);
+        
+        File f = new File( resolveFileName(attachment.filename) );
+        FileTransfer.FileOutputHandler output = new FileTransfer.FileOutputHandler( f );
+        
+        FileTransfer ft = new FileTransfer();
+        ft.transfer( handler, output );
+    }
+    
+    def getAppInfo() {
+        def host        = OsirisContext.clientContext?.appEnv['app.host']
+        host            = ( host ? host : 'localhost:8080' )
+        def context     = OsirisContext.clientContext?.appEnv['app.context']
+        context         = (context ? context : 'lguname' )
+        return [host:host, context:context]
+    }
+    
+    def makeSafeFileName( strvalue ) {
+        return strvalue.replaceAll('[\\W]', '')
+    }
+    
+}
+
+class UploadTask extends com.rameses.rcp.common.Task {
+    def ended = false
+    def cancelled = false 
+    def parent 
+
+    public boolean accept() {
+       return !ended && !cancelled 
+    }
+
+    public boolean isEnded() {
+        return ended || cancelled 
+    }
+
+    public void execute() {
+        def faas = parent.faas 
+        def app  = parent.getAppInfo()        
+        
+        def list = parent.newAttachments.findAll{ it.uploaded == false }
+        println 'list size -> ' + list.size()
+        
+        list.each{ attachment ->
+            try {
+                def uploader = new HttpFileUploader(app.host);
+                def newfile = attachment.file 
+                println 'Uploading -> ' + newfile.name 
+                
+                uploader.upload([
+                    file      : newfile,
+                    filename  : attachment.filename,
+                    directory : attachment.directory,
+                ])
+                uploader.close()
+                
+                attachment.file = null
+                attachment = parent.faasSvc.addAttachment( faas.objid, attachment )
+                attachment.uploaded = true 
+                parent.copyToCache( newfile, attachment.filename )
+                parent.attachments.add( attachment )
+                parent.filelistHandler.load()
+            }
+            catch( e ) {
+                e.printStackTrace()
+            }
+        }
+
+        parent.stopTimer()
+        parent.listHandler.load()
+        parent.binding.fireNavigation('default')
+    }
+}  
+
+
+class AttachmentFilter extends javax.swing.filechooser.FileFilter{
+    
+    public boolean accept(File f) {
+        if (f.isDirectory()) {
+            return true;
+        }
+
+        String extension = getExtension(f);
+        if (extension != null) {
+            if (extension.equals("gif") ||
+                extension.equals("jpeg") ||
+                extension.equals("jpg") ||
+                extension.equals("png") ||
+                extension.equals("bmp") ||
+                extension.equals("pdf") ) {
+                    return true;
+            } else {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    public String getDescription() {
+        return "Attachments";
+    }
+    
+    public String getExtension(File f) {
+        String ext = null;
+        String s = f.getName();
+        int i = s.lastIndexOf('.');
+
+        if (i > 0 &&  i < s.length() - 1) {
+            ext = s.substring(i+1).toLowerCase();
+        }
+        return ext;
+    }
+    
+}
+
+]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.faas.FAASAttachmentPage"/>
+        <page name="attachment" template="etracs2.rpt.faas.FAASAttachmentAddPage"/>
+        <page name="view" template="etracs2.rpt.faas.FAASAttachmentViewPage"/>
+    </pages>
+</workunit>

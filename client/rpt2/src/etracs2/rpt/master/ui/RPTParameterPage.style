@@ -1,0 +1,23 @@
+"entity.*|paramname" [mode == 'read'] {
+    readonly:true;
+}
+
+"entity.*|paramname" [mode != 'read'] {
+    readonly:false;
+}
+
+"selectedItem|searchText" [mode == 'read'] {
+    enabled:true;
+}
+
+"selectedItem|searchText" [mode != 'read'] {
+    enabled:false;
+}
+
+"entity.objid" [mode == 'create'] {
+    readonly:false;
+}
+
+"entity.objid" [mode != 'create'] {
+    readonly:true;
+}

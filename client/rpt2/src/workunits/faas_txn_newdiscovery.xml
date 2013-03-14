@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit extends="workunits/faas.xml">
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas"      action="newdiscovery"    caption="New Discovery" mnemonic="f" target="window" role="APPRAISER" permission="transfer.create"  index="2"/>
+        <invoker type="quick_launcher" code="ND01"     action="newdiscovery"    caption="New Discovery" target="window" />
+        <invoker type="faas_open.ND" action="open" caption="FAAS (Open)" mnemonic="o" shortcut="ctrl O" target="window" icon="images/open.png" role="APPRAISER" permission="faas.open" />
+        <invoker type="faas_viewprevious.ND" action="openPrevious" caption="View Previous" target="popup" icon="images/doc-view.png" />
+        <invoker type="formActions" action="viewBackTaxes"       caption="Back Taxes" visibleWhen="#{faas.info.txntype == 'ND'}" icon="images/doc-view.png" index="100" />
+    </invokers>
+    
+<code lang="groovy">
+        
+import com.rameses.rcp.annotations.* 
+import com.rameses.rcp.common.*
+import com.rameses.osiris2.client.*
+
+public class NewDiscoveryController extends etracs2.rpt.groovy.AbstractFAASController 
+{
+    @Binding 
+    def binding
+    
+    @Service('FAASService')
+    def svc
+    
+    @Service('Var')
+    def var
+    
+    public def getSvc(){ return svc }
+    public def getVar(){ return var }
+    public def getTxnType(){ return 'ND' }
+    public def getTxnTitle(){ return 'New Discovery' }
+    public boolean getAllowEditOwner() { return true }
+    public boolean getAllowEditPin() { return true }
+    
+    public def initFaasForTransaction() {
+        return null
+    }
+    
+    
+    /*-----------------------------------------------------------------------------
+    *
+    * NewDiscovery Support 
+    *
+    -----------------------------------------------------------------------------*/
+    def rputype = 'land'
+    
+    def newdiscovery()  { 
+        faas    = svc.createNewDiscovery()
+        mode    = 'create' 
+        txntype = faas.info.txntype
+        txntitle = 'New Discovery Transaction'
+        section  = 0
+        parcel   = 0
+        return 'ndinit' 
+    }
+        
+    List getRputypeList() {
+        return ['land', 'improvement']
+    }
+    
+    /*==================================================
+    **
+    ** BackTax Support
+    **
+    ==================================================*/
+    
+    def onupdateBackTaxes = {
+        binding.refresh('faas.info.backtaxyrs')
+    }
+    
+    def viewBackTaxes() {
+        return InvokerUtil.lookupOpener('backtax.open', [faas:faas, mode:mode, svc:svc, onupdate:onupdateBackTaxes])
+    }    
+}
+
+</code>
+<pages>
+    <page name="ndinit" template="etracs2.rpt.faas.FAASNDInitPage"/>
+</pages>
+</workunit>
+
+

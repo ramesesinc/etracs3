@@ -8,43 +8,37 @@ class BankAcctService{
 	def em
 	
 	@Service('ETRACSUtilService')
-	def util
-	
-	@Service('LogService')
-	def logService
+	def utilSvc
 	
 	def schemaname = "bankaccount:bankaccount"
 	def schemaversion = "1.0"
 	
 	@ProxyMethod
-	public def getFund() {      return em.sqlContext.createNamedQuery('bankacct:getFund').resultList.unique { it.objid }
+	public def getFund() {
+      return em.sqlContext.createNamedQuery('bankacct:getFund').resultList.unique { it.objid }
 	}
 	
 	@ProxyMethod
 	public def getList( searchText, params ){
-	   if( !searchText ) {
-         return em.sqlContext.createNamedQuery('bankacct:getBankAccounts').resultList
+        params += [ search : (searchText ? searchText + '%' : '%' ) ]
+		def filters = []
+		if( searchText ) {
+			filters = [
+				[' WHERE acctno LIKE $P{search}'],
+				[' WHERE bankcode LIKE $P{search}'],
+				[' WHERE bankname LIKE $P{search}'],
+			]
 		}
-		def data = em.sqlContext.createNamedQuery('bankacct:getBankAcctByAcctNo').setParameter( 'acctno', searchText + '%' ).resultList
-      if( data.size != 0 )
-         return data
-         
-      data = em.sqlContext.createNamedQuery('bankacct:getByBankCode').setParameter( 'bankcode', searchText + '%' ).resultList
-      if(data.size != 0)
-         return data
-
-      data = em.sqlContext.createNamedQuery('bankacct:getByBankName').setParameter( 'bankname', searchText + '%' ).resultList
-      if(data.size != 0)
-         return data
+		return utilSvc.getListFromQuery('bankacct:getList', filters, params, 'o.objid')
 	}
 	
 	@ProxyMethod
-	public def open( objid ){
-		return em.sqlContext.createNamedQuery( 'bankacct:getById' ).setParameter( 'objid', objid ).singleResult;
+	public def read( bankacct ){
+		return em.sqlContext.createNamedQuery( 'bankacct:getById' ).setParameters( bankacct ).singleResult;
 	}
 	
 	@ProxyMethod
-	public def create( bankacct ){
+	public def saveCreate( bankacct ){
       bankacct.objid = "B" + new UID();
       bankacct.schemaname = schemaname;
 		bankacct.schemaversion = schemaversion;
@@ -60,20 +54,21 @@ class BankAcctService{
 	}
 	
 	@ProxyMethod
-	public def update( bankacct ){
+	public def saveUpdate( bankacct ){
 		validate( bankacct )
 		
-		em.update( bankacct.schemaname, bankacct, { diff ->
-			logService.logB( 'UPDATE', 'BANKACCT', bankacct.objid, null, diff )
-		} as UpdateChangeHandler )
+		em.update( bankacct.schemaname, bankacct)
 			
 		return bankacct
 	}
 	
 	@ProxyMethod
-	public void delete( bankacct ){
+	public def remove( bankacct ){
 		try{
+			def old = em.read( bankacct.schemaname, bankacct )
+			if( old && old.docstate == 'APPROVED') throw new Exception('Record has already been approved.')
 			em.delete( bankacct.schemaname, bankacct );
+			return bankacct 
 		}catch( Throwable e ){
 			throw new Exception( 'Delete not allowed. Bank Account is already referenced by a transaction.' )	;
 		}
@@ -85,9 +80,6 @@ class BankAcctService{
 	}
 	
 	private void validate( bankacct ){
-		def oldbankAcct = em.read(bankacct.schemaname, bankacct);
-		//util.validateLastUpdate( bankacct, oldbankAcct );
-		
 		em.validate(bankacct.schemaname, bankacct);
 	}
 	
@@ -100,7 +92,7 @@ class BankAcctService{
 	
 	@ProxyMethod
 	public def approve( bankacct ) {
-      def tobeApproved = em.read( schemaname, [objid:bankacct] );
+      def tobeApproved = em.read( schemaname, bankacct);
 
       if(tobeApproved.docstate == 'APPROVED')
          throw new Exception("Document is already approved");

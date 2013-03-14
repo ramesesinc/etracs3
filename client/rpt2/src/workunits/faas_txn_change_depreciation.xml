@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit extends="workunits/faas.xml">
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas"      action="initTxn"    caption="Change Depreciation" mnemonic="f" target="window" role="APPRAISER" permission="transfer.create"  index="7"/>
+        <invoker type="faas_open.CD" action="open" caption="FAAS (Open)" mnemonic="o" shortcut="ctrl O" target="window" icon="images/open.png" role="APPRAISER" permission="faas.open" />
+        <invoker type="faas_viewprevious.CD" action="openPrevious" caption="View Previous" target="popup" icon="images/doc-view.png" />
+        <invoker type="quick_launcher" code="CD01"      action="initTxn"    caption="Change Depreciation" target="window" />
+        
+    </invokers>
+    
+<code lang="groovy">
+        
+import com.rameses.rcp.annotations.* 
+
+public class ChangeDepreciationController extends etracs2.rpt.groovy.AbstractFAASController 
+{
+    @Service('FAASService')
+    def svc
+    
+    @Service('Var')
+    def var
+    
+    public def getSvc(){ return svc }
+    public def getVar(){ return var }
+    public def getTxnType(){ return 'CD' }
+    public def getTxnTitle(){ return 'Change Depreciation' }
+    
+    public def initFaasForTransaction() {
+        return svc.initChangeDepreciationTransaction( getCommonInitTxnParams() )
+    }
+    
+}
+
+</code>
+<pages></pages>
+</workunit>
+
+
+

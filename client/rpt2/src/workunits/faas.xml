@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    <invokers>
+        <invoker type="formActions" action="_close"         caption="Close"                 shortcut="ctrl W"   mnemonic="c"  immediate="true" icon="images/cancel.png"/>
+        <invoker type="formActions" action="save"           caption="Save"                  shortcut="ctrl S"   mnemonic="s"  visibleWhen="#{showSaveAction == true}"  icon="images/save.png" />
+        <invoker type="formActions" action="submit"         caption="Submit For Approval"   shortcut="ctrl M"   mnemonic="m"  visibleWhen="#{faas.docstate == 'INTERIM' and mode != 'create'}"   icon="images/doc-submit.png" role="APPRAISER" permission="faas.submit" />
+        <invoker type="formActions" action="submitRemote"   caption="Submit For Approval (Remote)"   shortcut="ctrl M"   mnemonic="m"  visibleWhen="#{faas.docstate == 'FORREVIEW' and mode != 'create'}"   icon="images/doc-submit.png" role="APPRAISER" permission="faas.submit" />
+        <invoker type="formActions" action="remove"         caption="Delete"                shortcut="ctrl D"   mnemonic="d"  visibleWhen="#{showDelete == true }" immediate="true"   icon="images/doc-delete.png" role="APPRAISER" permission="faas.delete" />
+        <invoker type="formActions" action="disapprove"     caption="Disapprove"            shortcut="ctrl e"   mnemonic="a"  visibleWhen="#{showDisapproveAction == true}"  icon="images/disapprove.png" role="APPRAISER" permission="faas.disapprove" />
+        <invoker type="formActions" action="approve"        caption="Approve"               shortcut="ctrl A"                 visibleWhen="#{showApproveAction == true}"   icon="images/approve.png" role="CITY_ASSESSOR" permission="faas.approve" />
+        <invoker type="formActions" action="approveRemote"  caption="Approve (Remote)"       shortcut="ctrl A"                 visibleWhen="#{showApproveRemoteAction == true}"   icon="images/approve.png" role="PROVINCIAL_ASSESSOR" permission="faas.approve" />
+        <invoker type="formActions" action="submitToProvince" caption="Submit To Province"  shortcut="ctrl M"   mnemonic="m"  visibleWhen="#{showSubmitToProvinceAction == true}"   icon="images/doc-submit.png" role="MUNICIPAL_ASSESSOR" permission="faas.submittoprovince" />
+        <invoker type="formActions" action="disapproveByProvince" caption="Disapprove"      shortcut="ctrl D"                 visibleWhen="#{showDisapproveByProvinceAction == true}"  icon="images/disapprove.png" role="PROVINCIAL_ASSESSOR" permission="faas.disapprove" />
+        <invoker type="formActions" action="disapproveRemote" caption="Disapprove (Remote)"      shortcut="ctrl D"                 visibleWhen="#{showDisapproveRemoteAction == true}"  icon="images/disapprove.png" role="PROVINCIAL_ASSESSOR" permission="faas.disapprove" />
+        <invoker type="formActions" action="approveByProvince" caption="Approve"            shortcut="ctrl A"   mnemonic="a"  visibleWhen="#{showApprovedByProvinceAction == true}"   icon="images/approve.png" role="PROVINCIAL_ASSESSOR" permission="faas.approvebyprovince" />
+        <invoker type="formActions" action="showAttachments"    caption="Attachments"   visibleWhen="#{mode != 'create'}"  mnemonic="m" />
+        <invoker type="formActions" action="viewPrevious"       caption="View Previous" visibleWhen="#{showViewPrevious == true}" icon="images/doc-view.png" />
+        
+        <invoker type="initActions" action="_close"             caption="Cancel"   mnemonic="c"  immediate="true" icon="images/cancel.png"/>
+        <invoker type="initActions" action="initTransaction"    caption="Next"     mnemonic="n" shortcut="ctrl N" icon="images/next.png" />
+        
+        <invoker type="initCreateActions" action="_close"    caption="Cancel"   mnemonic="c"  immediate="true" icon="images/cancel.png"/>
+        <invoker type="initCreateActions" action="create"    caption="Next"     mnemonic="n" shortcut="ctrl N" icon="images/next.png" />
+    </invokers>
+
+    <pages>
+        <page template="etracs2.rpt.faas.FAASPage"/>
+        <page name="new" template="etracs2.rpt.faas.FAASNewPage"/>
+        <page name="newprov" template="etracs2.rpt.faas.FAASProvNewPage"/>
+        <page name="txninit" template="etracs2.rpt.faas.FAASTxnInitPage"/>
+        <page name="message" template="etracs2.rpt.faas.MessagePage"/>
+    </pages>
+</workunit>
+
+

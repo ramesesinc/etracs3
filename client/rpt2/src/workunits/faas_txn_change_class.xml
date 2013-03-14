@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit extends="workunits/faas.xml">
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas"          action="initTxn"    caption="Change Classification" mnemonic="f" target="window" role="APPRAISER" permission="transfer.create"  index="5"/>
+        <invoker type="faas_open.CC" action="open" caption="FAAS (Open)" mnemonic="o" shortcut="ctrl O" target="window" icon="images/open.png" role="APPRAISER" permission="faas.open" />
+        <invoker type="faas_viewprevious.CC" action="openPrevious" caption="View Previous" target="popup" icon="images/doc-view.png" />
+        <invoker type="quick_launcher" code="CC01"         action="initTxn"    caption="Change Classification" target="window" />
+        
+    </invokers>
+    
+<code lang="groovy">
+        
+import com.rameses.rcp.annotations.* 
+
+public class ChangeClassificationController extends etracs2.rpt.groovy.AbstractFAASController 
+{
+    @Service('FAASService')
+    def svc
+    
+    @Service('Var')
+    def var
+    
+    public def getSvc(){ return svc }
+    public def getVar(){ return var }
+    public def getTxnType(){ return 'CC' }
+    public def getTxnTitle(){ return 'Change Classification' }
+    
+    public def initFaasForTransaction() {
+        return svc.initChangeClassificationTransaction( getCommonInitTxnParams() )
+    }
+    
+}
+
+</code>
+<pages></pages>
+</workunit>
+
+

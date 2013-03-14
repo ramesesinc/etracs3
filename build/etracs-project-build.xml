@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="etracs-deployer" default="all" basedir=".">
+    
+    <target name="init-etracs-deployer" depends="-post-init">
+		<property file="${basedir}/../../build/etracs2.properties"/>
+    </target>
+    
+    <target name="deploy-etracs-jar" depends="init-etracs-deployer">
+		<copy file="${basedir}/${dist.jar}" todir="${osiris3.modules.dir}"/> 
+		<copy file="${basedir}/${dist.jar}" todir="${etracs.client.modules.dir}"/> 
+    </target>
+</project>

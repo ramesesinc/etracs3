@@ -1,0 +1,91 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txn/treasury/af" action="init" caption="Activate AF Control" role="COLLECTOR" permission="afcontrol.activate" index="2" />
+        <invoker type="afcontrol:activate" action="initFromInvoker" caption="Activate AF Control" target="popup" />
+        <invoker type="quick_launcher" code="AFC02" action="init" caption="Activate AF Control" role="COLLECTOR" permission="afcontrol.activate" />
+        
+        <invoker type="formActions" action="_close" caption="Close" mnemonic="c" icon="images/cancel.png"/>
+        <invoker type="formActions" action="activate" caption="Activate" mnemonic="a" shortcut="ctrl + A" icon="images/deploy.png"/>
+    </invokers>
+    <code>
+<![CDATA[        
+
+import com.rameses.rcp.common.*
+import com.rameses.rcp.annotations.*
+import com.rameses.osiris2.client.*
+
+class AFControlActivateController
+{
+
+    @Binding
+    def binding
+    
+    @Service('AFControlService')
+    def svc
+    
+    @Service('ETRACSUserService')
+    def userService
+    
+    def afid = '%'
+    def mode = '%'
+    def onselectHandler 
+    def selectedItem
+    def list
+    def accessedFrom = 'menu' 
+    
+    void init() {
+        list = svc.getOpenAFControlByAssignedTo( OsirisContext.env.USERID, mode, afid )
+    }
+    
+    void initFromInvoker() {
+        init()
+        accessedFrom = 'invoker'
+    }
+    
+    def activate() {
+        if( ! selectedItem ) throw new Exception('Select an accountable form.')    
+        if( selectedItem.active == 1 ) throw new Exception('Selected Accountable Form is already active. ')
+        
+        def afcontrol = null 
+        if( MsgBox.confirm('Activate selected AF Control?') ) {
+            afcontrol = svc.activateAFControl( selectedItem.objid, selectedItem?.mode  ) 
+            if( onselectHandler ) {
+                onselectHandler( afcontrol )
+                //MsgBox.alert('Stub No. ' + selectedItem.stubno + ' has been successsfully activated.')
+            }
+        }
+        if( accessedFrom == 'invoker' ) {
+            return '_close'
+        }
+        selectedItem.putAll( afcontrol )
+        binding.refresh('selectedItem')
+        return null
+    }
+    
+    def listHandler = [
+        getRows    : { return 50 },
+        getColumns : { 
+            return [
+                new Column(name:'_active', caption:'Active', type:'boolean', maxWidth:80),
+                new Column(name:'afid', caption:'AF No.', maxWidth:80),
+                new Column(name:'mode', caption:'Mode'),
+                new Column(name:'stubno', caption:'Stub No.', maxWidth:120),
+                new Column(name:'startseries', caption:'Start Series', format:'0000000'),
+                new Column(name:'endseries', caption:'End Series', format:'0000000'),
+                new Column(name:'currentseries', caption:'Current Series', format:'0000000'),
+                new Column(name:'balance', caption:'Balance', type:'integer'),
+            ]
+        },
+        fetchList : {
+            return list
+        },
+    ] as SubListModel
+    
+}
+
+]]>
+    </code>
+    <pages>
+        <page template="etracs2.tc.af.AFControlActivatePage"/>
+    </pages>
+</workunit>

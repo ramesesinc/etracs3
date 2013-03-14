@@ -1,0 +1,64 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txn/treasury/util" action="init" caption="Unremitted Collection Summary" role="COLLECTOR" permission="unremittedcollectionsummary.create" index="210" target="popup"/>
+        <invoker type="quick_launcher" code="UCS" action="init" caption="Unremitted Collection Summary" role="COLLECTOR" permission="unremittedcollectionsummary.create" target="popup" />
+    </invokers>
+    <code>
+        <![CDATA[
+
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+
+        class UnremittedCollectionSummaryService 
+        {
+        
+            @Binding
+            def binding
+            
+            @Service('ReceiptService')
+            def svc
+        
+            def entity = [:]
+            def afcontrollist = []
+            def cashtendered ;
+            
+            void init() {
+                entity.cash = 0.00;
+                entity.otherpayment = 0.00;
+                entity.totalamount = 0.00;
+                entity.change = 0.00;
+                entity.type = 'byseries';
+                cashtendered = 0.00
+            }
+            
+            void setCashtendered( def cashtendered ) {
+                entity.change = cashtendered - entity.cash;
+                if( entity.change < 0.0 ) entity.change = 0.0
+                this.cashtendered = cashtendered;
+                binding.refresh('entity.change');
+            }
+            
+            def getAfcontrollist() {
+                 if(! afcontrollist )
+                    afcontrollist = svc.getUnremittedAfIdReceipts( OsirisContext.env.USERID);
+                    
+                 return afcontrollist;
+            }
+            
+            def compute() {
+                entity.afid = entity.afcontrol.afid;
+                entity.collectorid = OsirisContext.env.USERID; 
+                entity = svc.getUnremittedCollectionSummary( entity)
+                binding.refresh();
+             }   
+            
+            
+        }
+        ]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.tc.collection.UnremittedCollectionSummaryPage"/>
+    </pages>
+</workunit>

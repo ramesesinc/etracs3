@@ -1,0 +1,6 @@
+<workunit  extends="workunits/rulemgmt.xml">
+    
+     <invoker folderid="/explorer/rulemgmt/rpt" action="init" caption="RPT Billing Rules"  
+            role="RULE_AUTHOR" permission="rptbillingrule.view" index="50" ruleset="rptbilling"/>
+    
+</workunit>

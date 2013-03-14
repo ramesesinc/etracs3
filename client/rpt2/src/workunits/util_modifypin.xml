@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/util" action="init" caption="Modify PIN" target="popup" index="500" role="APPRAISER" permission="rptutil.modifypin" />
+    </invokers>
+    
+    <code lang="groovy">
+
+<![CDATA[        
+
+import com.rameses.rcp.common.*
+import com.rameses.rcp.annotations.*
+import com.rameses.osiris2.client.*
+
+public class ModifyPINUtilityController {
+    @Binding
+    def binding
+    
+    @Service('RPTUtilityService') 
+    def svc 
+    
+    @Service('LguService')
+    def lguSvc
+    
+    @Service('Var')
+    def sysVar
+    
+    def faas
+    def pintype
+    def municity
+    def district
+    def barangay
+    def section  = 0
+    def parcel = 0
+    def suffix = 0
+    def ssection 
+    def sparcel
+    def newpin
+    def useoldpin = false
+    
+    def lgutype
+    
+    void init(){
+        lgutype = sysVar.lgu_type
+    }
+    
+    void updatePin() {
+        if( MsgBox.confirm('Update existing PIN with new information?') ) {
+            svc.updatePin([
+                faasid      : faas.objid,
+                rputype     : faas.rputype,
+                docstate    : faas.docstate, 
+                oldpin      : faas.fullpin,
+                tdno        : faas.tdno, 
+                pintype     : pintype,
+                lgutype     : lgutype,
+                municity    : municity,
+                district    : district,
+                barangay    : barangay,
+                section     : section,
+                parcel      : parcel,
+                suffix      : suffix,
+                ssection    : ssection,
+                sparcel     : sparcel,
+                newpin      : newpin, 
+            ])
+            clearInfo()
+            binding?.focus('faas')
+        }
+    }
+    
+    void clearInfo() {
+        faas        = null
+        pintype     = 'new' 
+        municity    = null
+        barangay    = null    
+        section     = 0
+        parcel      = 0
+        suffix      = 0
+        ssection    = null 
+        sparcel     = null 
+        newpin      = null 
+        useoldpin   = false
+    }
+    
+    void setPintype( pintype ) {
+        this.pintype = pintype 
+        updateNewPin()
+    }
+    
+    void setMunicity( municity ) {
+        this.municity = municity
+        updateNewPin()
+    }
+    
+    void setDistrict( district ) {
+        this.district = district
+        updateNewPin()
+    }
+    
+    void setBarangay( barangay ) {
+        this.barangay = barangay
+        updateNewPin()
+    }
+    
+    void setSection( section ) {
+        this.section = section
+        updateNewPin()
+    }
+    
+    void setParcel( parcel ) {
+        this.parcel = parcel 
+        updateNewPin()
+    }
+    
+    void setSuffix( suffix) {
+        this.suffix = suffix 
+        updateNewPin()
+    }
+    
+    void setUseoldpin( useoldpin ) {
+        this.useoldpin = useoldpin 
+        updateNewPin()
+    }
+    
+    void updateNewPin() {
+        newpin = new StringBuilder()
+        
+        if( lgutype == 'city' || lgutype == 'CITY' ) {
+            if( municity ) {
+                newpin = municity.indexno + '-'
+            }
+            else {
+                newpin = '000-'
+            }
+            
+            if( district ) {
+                newpin += district.indexno + '-'
+            }
+            else {
+                newpin += '00-'
+            }
+        }
+        else {
+            if( municity ) {
+                newpin = municity.pin + '-'
+            }
+            else {
+                newpin = '000-00-'
+            }
+        }
+        
+        if( barangay && barangay.oldindexno == null) {
+            barangay.oldindexno = barangay.indexno 
+        }
+        
+        if( barangay && useoldpin ) {
+            newpin += barangay?.oldindexno + '-'
+        }
+        else if( barangay) {
+            newpin += barangay?.indexno + '-'
+        }
+        else {
+            newpin += '0000-'
+        }        
+        
+        
+        if( section > 0 ) {
+            ssection = section.toString()
+            ssection = ( pintype == 'new' ? ssection.padLeft(3,'0') : ssection.padLeft(2,'0'))
+            newpin += ssection + '-'
+        }
+        else {
+            ssection = ( pintype == 'new' ? '000' : '00') 
+            newpin += ssection + '-'
+        }
+        
+        if( parcel > 0 ) {
+            sparcel = parcel.toString()
+            sparcel = ( pintype == 'new' ? sparcel.padLeft(2,'0') : sparcel.padLeft(3,'0'))
+            newpin += sparcel
+        }
+        else {
+            sparcel = ( pintype == 'new' ? '00' : '000')
+            newpin += sparcel 
+        }
+        
+        if( suffix > 0){
+            newpin += '-' + suffix.toString().padLeft(4,'0')
+        }
+        
+        binding?.refresh('newpin')
+    }
+    
+    
+    def onselectFaas = { f ->
+        suffix = 0
+        if( f.rputype != 'land' ) {
+            def idx = f.fullpin.lastIndexOf('-') + 1
+            def len = f.fullpin.length()-1
+            try {
+                suffix = Integer.parseInt( f.fullpin[ idx..len] )
+            }
+            catch( e ) {
+                suffix = 0
+            }
+            binding.refresh('suffix ')
+        }
+    }
+    
+    def getLookupFaas() {
+        return InvokerUtil.lookupOpener('faas.lookup',[onselect:onselectFaas])
+    }
+    
+    List getPinTypeList() {
+        return ['new', 'old']
+    }
+    
+    List getMunicityList() {
+        if( !faas ) return []
+        
+        if( lgutype == 'city' || lgutype == 'CITY' )
+            return lguSvc.getLgusByType('CITY')
+            
+        return lguSvc.getLgusByType('MUNICIPALITY')
+    }
+    
+    List getDistrictList() {
+        return lguSvc.getLgusByParent( municity?.objid )
+    }
+    
+    List getBarangayList() {
+        if( lgutype == 'city' || lgutype == 'CITY' )
+            return lguSvc.getLgusByParent( district?.objid )
+        
+        return lguSvc.getLgusByParent( municity?.objid )
+    }
+    
+}
+
+]]>
+</code>
+    
+    <pages>
+        <page template="etracs2.rpt.utils.ModifyPinPage" />
+    </pages>
+</workunit>
+

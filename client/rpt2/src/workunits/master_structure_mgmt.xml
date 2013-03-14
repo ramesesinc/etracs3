@@ -1,0 +1,28 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/rpt" caption="Structures" role="MASTER_ENCODER" permission="structure.view" target="window" index="6" />
+        <invoker type="quick_launcher" code="ST00" caption="Structures" role="MASTER_ENCODER" permission="structure.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class StructureMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'StructuresService'
+            String objectName = 'structure'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"structurecode", caption:"Code", minWidth:50),
+                    new Column(name:"structuredesc", caption:"Structure", minWidth:200),
+                    new Column(name:"indexno", caption:"Index No.", minWidth:60, editable:false)
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

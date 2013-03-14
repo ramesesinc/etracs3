@@ -1,0 +1,30 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+
+class LogInterceptor{
+	
+	@PersistenceContext('main')
+	def em;
+	
+	@Service('LogService')
+	def logSvc 
+
+	@After(pattern='.*saveCreate.*') 
+	public void afterSaveCreate( evt ) {
+		def entity = evt.result 
+		logSvc.log( evt.methodName, entity._objectname, entity.objid ) 
+	}
+
+	@After(pattern='.*saveUpdate.*') 
+	public void afterSaveUpdate( evt ) {
+		def entity = evt.result 
+		logSvc.logB( evt.methodName, entity._objectname, entity.objid, null, entity._diff ) 
+	}
+
+	@After(pattern='.*remove.*') 
+	public void afterRemove( evt ) {
+		def entity = evt.result 
+		logSvc.log( evt.methodName, entity._objectname, entity.objid ) 
+	} 
+    
+}

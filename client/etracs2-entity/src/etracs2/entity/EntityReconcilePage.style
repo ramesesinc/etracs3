@@ -1,0 +1,17 @@
+"entity|numChars|weightThreshold|selected.*" [ mode == 'create']{
+    readonly:false;
+}
+
+"entity|numChars|weightThreshold|selected.*" [ mode != 'create']{
+    readonly:true;
+}
+
+
+"searchMatch|addSelectedMatchItem|removeSelectedReconciledItem" [ mode == 'create']{
+    enabled:true;
+}
+
+
+"searchMatch|addSelectedMatchItem|removeSelectedReconciledItem" [ mode != 'create']{
+    enabled:false;
+}

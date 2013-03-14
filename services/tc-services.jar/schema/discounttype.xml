@@ -1,0 +1,7 @@
+<schema>
+	<element name="discounttype" tablename="discounttype">
+		<field name="objid" primary="true"/>
+		<field name="discounttype" required="true"/>
+		<field name="rate" type="decimal" required="true"/>
+	</element>
+</schema>

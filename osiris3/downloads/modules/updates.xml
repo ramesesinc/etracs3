@@ -1,0 +1,50 @@
+<app>
+    <env>
+		app.title=ETRACS 2.2.000 (Municipality)
+		app.cluster=osiris3
+        app.host=localhost:8070
+        app.context=etracs3
+		app.help=http://localhost:18080/help 
+
+		#app.debugMode=true
+		app.loader=com.rameses.osiris2.client.OsirisAppLoader
+		readTimeout=50000
+		connectionTimeout=5000
+    </env>    
+    <modules>
+		<module file="client-common-lib.jar"  />
+		<module file="client-system.jar" />
+			
+		<module file="rule-mgmt.jar" />
+		
+		<module file="osiris2-client-ui.jar" />
+		<module file="osiris2-framework.jar" />
+		<module file="osiris2-report.jar"  />
+		<module file="rameses-client-ui.jar" />
+		<module file="rameses-common2.jar"   />		
+        <module file="rameses-jdbc.jar"  />
+		<module file="httpclientuploader.jar"  />
+		
+		<module file="rameses-client-template-ui.jar" />
+		<module file="rameses-client-template-controller.jar" />
+		
+		<module file="cashreceipt.jar"  />
+		<module file="shared.jar"  />
+		
+		<!-- register modules below -->
+        <module file="etracs2-common.jar" />
+		<module file="etracs2-entity.jar" />
+        <module file="tc2.jar" />
+        <module file="tc2-reports.jar" />
+        <module file="bp2.jar" />
+        <module file="bp2-reports.jar" />
+        <module file="bp-rule-mgmt.jar" />
+        <module file="rpt2.jar" />
+		<module file="rpt2-reports.jar" />
+        <module file="rpt-rule-mgmt.jar" />
+		
+		<module file="ctc2.jar" />
+        <module file="ctc-rule-mgmt.jar" />
+    </modules>
+</app>
+

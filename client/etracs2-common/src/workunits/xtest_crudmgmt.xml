@@ -1,0 +1,30 @@
+<workunit extends="workunits/crudmgmt.xml" >
+    <invokers>
+        <!-- 
+        <invoker folderid="/explorer/txn/treasury/util" action="init" doctype="incomeaccount" caption="Income Accounts" index="1000" />
+        <invoker type="quick_launcher" code="X" action="init" doctype="incomeaccount" caption="Income Accounts" index="1000" />
+        -->
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class TestCRUDMgmtController extends etracs2.groovy.AbstractCRUDMgmtController
+        {
+            @Service('IncomeAcctService')
+            def svc 
+            
+            def getService() { return svc }
+            
+            def getListColumns(){
+                return [
+                    new Column(name:'acctcode', caption:'Code', width:100),
+                    new Column(name:'accttitle', caption:'Account Title', width:800),
+                ]
+            }
+        }
+    </code>
+    <pages>
+    </pages>
+</workunit>

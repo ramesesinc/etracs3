@@ -1,0 +1,27 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/bplo" caption="LOB Attributes" role="MASTER_ENCODER" permission="lobattribute.view" target="window" index="5" />
+        <invoker type="quick_launcher" code="LOBA00" caption="LOB Attributes" role="MASTER_ENCODER" permission="lobattribute.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class LobAttributeMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'LobAttributeService'
+            String objectName = 'lobattribute'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:'name', caption:'Attribute'),
+                    new Column(name:'description', caption:'Description'),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

@@ -1,0 +1,6 @@
+<workunit  extends="workunits/rulemgmt.xml">
+    
+     <invoker folderid="/explorer/rulemgmt/ctc" action="init" caption="CTC Assessment Rules"  
+            role="RULE_AUTHOR" permission="ctcassessmentrule.view" index="50" ruleset="ctcassessment"/>
+    
+</workunit>

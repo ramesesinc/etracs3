@@ -1,0 +1,27 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/rpt" caption="Materials" role="MASTER_ENCODER" permission="material.view" target="window" index="5" />
+        <invoker type="quick_launcher" code="MAT00" caption="Materials" role="MASTER_ENCODER" permission="material.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class MaterialMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'MaterialsService'
+            String objectName = 'material'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"materialcode", caption:"Code", minWidth:50),
+                    new Column(name:"materialdesc", caption:"Material", minWidth:200)
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

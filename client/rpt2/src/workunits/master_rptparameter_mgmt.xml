@@ -1,0 +1,28 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/rpt" caption="Parameters" role="MASTER_ENCODER" permission="rptparameter.view" target="window" index="10" />
+        <invoker type="quick_launcher" code="RPARAM00" caption="Parameters" role="MASTER_ENCODER" permission="rptparameter.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class RPTParameterMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'RPTParametersService'
+            String objectName = 'rptparameter'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"paramname", caption:"Name"),
+                    new Column(name:"paramcaption", caption:"Caption"),
+                    new Column(name:"paramtype", caption:"Data Type"),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

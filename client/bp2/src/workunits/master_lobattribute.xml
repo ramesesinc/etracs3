@@ -1,0 +1,26 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="LOBA01" action="create" caption="LOB Attribute" role="MASTER_ENCODER" permission="lobattribute.create"/>
+        <invoker type="lobattribute_create" action="create" caption="LOB Attribute" />
+        <invoker type="lobattribute_open" action="open" caption="LOB Attribute" />
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class LobAttributeController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+    String serviceName = 'LobAttributeService'
+    String objectName  = 'lobattribute'
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.bp.master.ui.LobAttributePage"/>
+    </pages>
+</workunit>

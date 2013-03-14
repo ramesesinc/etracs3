@@ -1,0 +1,28 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/rpt" caption="Property Classifications" role="MASTER_ENCODER" permission="propertyclassification.view" target="window" index="1" />
+        <invoker type="quick_launcher" code="PC00" caption="Property Classifications" role="MASTER_ENCODER" permission="propertyclassification.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class PropertyClassificationMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'PropertyClassificationService'
+            String objectName = 'propertyclassification'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"propertycode", caption:"Code", minWidth:40),
+                    new Column(name:"propertydesc", caption:"Description", minWidth:150),
+                    new Column(name:"orderno", caption:"Order No."),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    <invokers>
+        <invoker type="backtax.open" action="init" caption="Back Taxes" target="popup" />
+    </invokers>
+    <code lang="groovy">
+
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*
+import java.rmi.server.UID
+
+public class BackTaxController 
+{
+    @Binding
+    def binding
+    
+    def onupdate  //handler
+    def svc
+    def faas
+    def mode 
+    def selectedItem
+    
+    void init() {
+        println '='*50
+        println faas 
+        println '='*50
+        println 'mode -> ' + mode + '   svc -> ' + svc
+        if( ! faas.backtaxes ) faas.backtaxes = []
+    }
+    
+    def ok() {
+        if ( listHandler.errorMessages ) {
+            throw new Exception( listHandler.errorMessages )
+        }
+        return '_close'
+    }
+    
+    def listHandler = [
+        fetchList   : { return faas.backtaxes },
+        createItem  : { return createEntity() },
+        getRows     : { return 50 },
+        getColumns  : { return [
+            new Column(name:'ry', caption:'RY', editable:true, type:'integer', format:'0000', width:50, required:true),
+            new Column(name:'tdno', caption:'TD No.', editable:true, width:150, required:true),
+            new Column(name:'bmv', caption:'Base Market Value', editable:true, type:'decimal', format:'#,##0.00', width:120, required:true),
+            new Column(name:'mv', caption:'Market Value', editable:true, type:'decimal', format:'#,##0.00', width:120, required:true),
+            new Column(name:'av', caption:'Assessed Value', editable:true, type:'decimal', format:'#,##0.00', width:120, required:true),
+            new Column(name:'effectivityyear', caption:'Effectivity', editable:true, type:'integer', format:'0000', width:120, required:true),
+            new Column(name:'taxable', caption:'Taxable?', editable:true, type:'boolean', width:80, required:true),
+        ]},
+        validate   : { li -> doValidate( li.item) },
+        onAddItem  : { item -> 
+            item.objid = 'BT' + new UID()
+            faas.backtaxes.add( item ) 
+        },
+        onRemoveItem : { item -> 
+            if( MsgBox.confirm('Remove item?') ) {
+                faas.backtaxes.remove( item )
+            }
+        },
+    ] as SubListModel 
+    
+    def doValidate( item ) {
+        try {
+            required( 'RY', item.ry )
+            required( 'TD No.', item.tdno )
+            required( 'Base Market Value', item.bmv)
+            required( 'Market Value', item.mv )
+            required( 'Assessed Value', item.ry )
+            required( 'Assessed Value', item.av )
+            required( 'Effectivity', item.effectivityyear )
+            if( item.bmv < 0.0 ) throw new Exception('Base Market Value must be greater than or equal to zero.')
+            if( item.mv < 0.0 ) throw new Exception('Market Value must be greater than or equal to zero.')
+            if( item.av < 0.0 ) throw new Exception('Assessed Value must be greater than or equal to zero.')
+            if( item.av > item.mv) throw new Exception('Assessed Value must be less than Market Value.')
+            if( item.ry >= faas.rpu.ry ) throw new Exception('RY must be less than current FAAS revision year ' + faas.rpu.ry + '.')
+            if( item.effectivityyear < item.ry ) throw new Exception('Effectivity must be greater than or equal to RY')
+            if( item.effectivityyear > item.ry + 2 ) throw new Exception('Effectivity must be either ' + item.ry + ' or ' + (item.ry + 1) + '.')
+            validateRySequence( item )
+            validateNumberBackTaxYearsPolicy( item )
+            return true 
+        }
+        catch( e ) {
+            MsgBox.alert( e.message )
+            throw e
+        }
+    }
+    
+    void validateNumberBackTaxYearsPolicy( item ) {
+        def maxyears = svc.getMaximumBackTaxYearsPolicy()
+        // calculate no. of backtax using the formula
+        // faas.ry - lastitem.ry 
+        def lastitemry = faas.rpu.ry
+        if( faas.backtaxes ) {
+            lastitemry = faas.backtaxes[ faas.backtaxes.size() -1 ].ry 
+        }
+        if( ! item.objid ) {
+            lastitemry = item.ry 
+        }
+        def backtaxyears = faas.rpu.ry - lastitemry
+        if( backtaxyears > maxyears ) {
+            throw new Exception("Total back tax years of $backtaxyears exceeded the maximum $maxyears years policy.")
+        }
+        faas.info.backtaxyrs = backtaxyears 
+        if( onupdate ) onupdate()
+    }
+    
+    void validateRySequence( item ) {
+        def list = []
+        if( ! item.objid ) {
+            //new item 
+            if( item.ry > faas.rpu.ry ) throw new Exception('RY must be less than ' + faas.rpu.ry + '.')
+            list = faas.backtaxes.findAll{ it.ry <= item.ry }
+        }
+        else {
+            def index = faas.backtaxes.findIndexOf{ it.objid == item.objid }
+            if( index >= 0 ) {
+                def lastindex = index - 1
+                if( lastindex >= 0 ){
+                    list.addAll( faas.backtaxes[0..index-1].findAll{ it.ry <= item.ry } )
+                }
+                lastindex = faas.backtaxes.size() - 1
+                if( lastindex >= index + 1) {
+                    list.addAll( faas.backtaxes[index+1..lastindex].findAll{ it.ry >= item.ry } )
+                }
+            }
+        }
+        if( list ) throw new Exception('RY must be arranged in descending order.')
+    }
+    
+    def createEntity(){
+        return [taxable:true, faasid:faas.objid, effectivityqtr:1] 
+    }
+    
+    void required( field, value) {
+        if( value == null ) throw new Exception("$field is required.")
+    }
+    
+    @Close
+    public boolean closeForm() {
+        try {
+            ok()
+            return true
+        }
+        catch( e ) {
+            MsgBox.alert( e.message )
+            return false 
+        }
+    }
+}
+
+]]>
+
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.faas.BackTaxPage"/>
+    </pages>
+</workunit>

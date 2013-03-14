@@ -1,0 +1,106 @@
+import com.rameses.annotations.*;
+import com.rameses.common.*;
+import java.rmi.server.UID
+
+class BankAcctService{
+	
+	@PersistenceContext('main')	
+	def em
+	
+	@Service('ETRACSUtilService')
+	def utilSvc
+	
+	def schemaname = "bankaccount:bankaccount"
+	def schemaversion = "1.0"
+	
+	@ProxyMethod
+	public def getFund() {
+      return em.sqlContext.createNamedQuery('bankacct:getFund').resultList.unique { it.objid }
+	}
+	
+	@ProxyMethod
+	public def getList( searchText, params ){
+        params += [ search : (searchText ? searchText + '%' : '%' ) ]
+		def filters = []
+		if( searchText ) {
+			filters = [
+				[' WHERE acctno LIKE $P{search}'],
+				[' WHERE bankcode LIKE $P{search}'],
+				[' WHERE bankname LIKE $P{search}'],
+			]
+		}
+		return utilSvc.getListFromQuery('bankacct:getList', filters, params, 'o.objid')
+	}
+	
+	@ProxyMethod
+	public def read( bankacct ){
+		return em.sqlContext.createNamedQuery( 'bankacct:getById' ).setParameters( bankacct ).singleResult;
+	}
+	
+	@ProxyMethod
+	public def saveCreate( bankacct ){
+      bankacct.objid = "B" + new UID();
+      bankacct.schemaname = schemaname;
+		bankacct.schemaversion = schemaversion;
+		def fundid = em.sqlContext.createNamedQuery( 'bankacct:getFundByFundName' ).setParameter( 'fundname', bankacct.fund ).singleResult;
+		bankacct.fundid = fundid.objid;
+		bankacct.docstate = 'DRAFT';
+		
+		validate( bankacct );
+		checkDuplicates( bankacct );
+		em.create( bankacct.schemaname, bankacct );
+		
+		return bankacct;
+	}
+	
+	@ProxyMethod
+	public def saveUpdate( bankacct ){
+		validate( bankacct )
+		
+		em.update( bankacct.schemaname, bankacct)
+			
+		return bankacct
+	}
+	
+	@ProxyMethod
+	public def remove( bankacct ){
+		try{
+			def old = em.read( bankacct.schemaname, bankacct )
+			if( old && old.docstate == 'APPROVED') throw new Exception('Record has already been approved.')
+			em.delete( bankacct.schemaname, bankacct );
+			return bankacct 
+		}catch( Throwable e ){
+			throw new Exception( 'Delete not allowed. Bank Account is already referenced by a transaction.' )	;
+		}
+	}
+	
+	@ProxyMethod
+	public List getAccountTypeList() {
+		return ["CHECKING", "SAVINGS", "TIME DEPOSIT", "HYSA"]
+	}
+	
+	private void validate( bankacct ){
+		em.validate(bankacct.schemaname, bankacct);
+	}
+	
+	private void checkDuplicates( bankacct ){
+		def data = em.sqlContext.createNamedQuery( 'bankacct:checkDuplicateBankAccount' )
+						.setParameters( [acctno:bankacct.acctno, fundid:bankacct.fundid] )
+						.singleResult;
+		if( data.count != 0 ) throw new Exception( "Bank Account already exists." )
+	}
+	
+	@ProxyMethod
+	public def approve( bankacct ) {
+      def tobeApproved = em.read( schemaname, bankacct);
+
+      if(tobeApproved.docstate == 'APPROVED')
+         throw new Exception("Document is already approved");
+        
+      tobeApproved.docstate = 'APPROVED';
+		em.update( schemaname, tobeApproved );
+      
+      return tobeApproved;
+	}
+	
+}

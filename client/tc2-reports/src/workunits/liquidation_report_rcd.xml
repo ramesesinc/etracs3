@@ -1,0 +1,54 @@
+<workunit>
+    <invokers>
+        <invoker type="liquidation_report.rcd" action="view"/>
+        
+        <invoker type="formActions" action="_close"  caption="Back" mnemonic="b" icon="images/back.png"/>
+    </invokers>
+    <code>
+        <![CDATA[
+
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import com.rameses.osiris2.reports.*;
+        import java.rmi.server.UID;
+
+        class LiquidationReportRCDController {
+        
+            @Service("LiquidationReportService")
+            def svc;
+            
+            @Service("ReportParameterService")
+            def paramSvc;
+        
+            def entity;
+        
+            def report = [
+                getReportName : { return 'etracs2/tc/report/liquidation/rcd/main.jasper' },
+                getSubReports : { 
+                    return [
+                        new SubReport( 'remittances', 'etracs2/tc/report/liquidation/rcd/remittances.jasper' ),
+                        new SubReport( 'otherpayments', 'etracs2/tc/report/liquidation/rcd/otherpayments.jasper' ),
+                        new SubReport( 'reportaforms', 'etracs2/tc/report/liquidation/rcd/reportaforms.jasper' ),
+                        new SubReport( 'reportnsaforms', 'etracs2/tc/report/liquidation/rcd/reportnsaforms.jasper' ),
+                        new SubReport( 'collectionsummary', 'etracs2/tc/report/liquidation/rcd/collectionsummary.jasper' ),
+                        new SubReport( 'reportnonserialsummary', 'etracs2/tc/report/liquidation/rcd/reportnonserialsummary.jasper' ),
+                    ] as SubReport[]
+                },
+                getReportData : { return svc.buildRCDReportData( entity.objid ); }, 
+                getParameters : { return paramSvc.getStandardParameter( OsirisContext.env.USERNAME ) }
+            ] as ReportModel;
+            
+            void view() {
+                report.viewReport();
+            }
+
+        }
+
+        ]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.tc.PreviewPage" />
+    </pages>
+</workunit>

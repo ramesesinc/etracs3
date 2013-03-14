@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// author    : jzamora
+// copyright : Rameses Systems Inc
+-->
+<workunit>
+    <invokers>
+        <invoker type="rysettingmgmt.type" caption="Machinery" index="30" />
+        <invoker folderid="/explorer/master/rpt/grs" caption="Machinery" target="window" role="MASTER_ENCODER" permission="rysetting.view" index="510"/>
+        <invoker type="quick_launcher" code="GRY02" caption="Machinery Revision Setting" index="30" />
+        
+        <invoker type="formActions" action="create" shortcut="ctrl N" immediate="true" caption="New" mnemonic="n" icon="images/doc-new.png" />
+        <invoker type="formActions" action="open" shortcut="ctrl O" visibleWhen="#{selectedItem != null }" immediate="true" caption="Open" mnemonic="e" icon="images/open.png" />
+        <invoker type="formActions" action="copy" shortcut="ctrl C" visibleWhen="#{selectedItem != null }" immediate="true" caption="Copy" mnemonic="c" icon="images/doc-new.png" />
+        <invoker type="formActions" action="delete" shortcut="ctrl D" visibleWhen="#{selectedItem != null}" immediate="true" caption="Delete" mnemonic="d" icon="images/doc-delete.png" />
+    </invokers>
+    <code lang="groovy">
+<![CDATA[        
+
+
+import com.rameses.rcp.annotations.*
+import com.rameses.rcp.common.*
+import com.rameses.osiris2.client.*
+
+public class MachRYSettingMgmtController
+{
+    @Binding
+    def binding
+    
+    @Service('MachRYSettingService')
+    def svc 
+    
+    def searchText
+    def selectedItem
+    
+    def onClose = {
+        listHandler.load()
+    }
+    
+    def create() {
+        return InvokerUtil.lookupOpener('machrysetting.create', [onClose:onClose])
+    }
+    
+    def open() {
+        return InvokerUtil.lookupOpener('machrysetting.open', [entity:selectedItem, onClose:onClose])
+    }
+    
+    def copy() {
+        if( MsgBox.confirm('Copy revision year ' + selectedItem.ry + '?' ) ) {
+            return InvokerUtil.lookupOpener('machrysetting.copy', [entity:selectedItem, onClose:onClose])
+        }
+        return null
+    }
+    
+    void delete() {
+        if( selectedItem && MsgBox.confirm('Delete setting?') ) {
+            svc.remove( selectedItem.objid )
+            search()
+        }
+    }
+    
+    void search() {
+        listHandler.load()
+    }
+    
+    def listHandler = [
+        getRows    : { return 50 },
+        getColumns : { return [
+            new Column(name:'ry', caption:'Revision Year', format:'0000', alignment:'left' ),
+            new Column(name:'appliedto', caption:'Applied To'),
+        ]},
+        fetchList  : { return svc.getList( searchText ) },
+    ] as SubListModel
+}
+
+]]>
+    </code>    
+    
+    <pages>
+        <page template="etracs2.rpt.ry.RYListMgmtPage" />
+    </pages>
+</workunit>

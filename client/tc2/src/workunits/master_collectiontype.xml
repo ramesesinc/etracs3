@@ -1,0 +1,55 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="COLT01" action="create" caption="Collection Type" role="MASTER_ENCODER" permission="collectiontype.create" target="window" />
+        <invoker type="collectiontype_create" action="create" caption="Collection Type" target="window"/>
+        <invoker type="collectiontype_open" action="open" caption="Collection Type" target="window"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class CollectionTypeController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+    @Service('AFService')
+    def afService
+    
+    String serviceName = 'CollectionTypeService'
+    String objectName  = 'collectiontype'
+    String getCreateFocusComponent() { return 'entity.name' }
+    String getEditFocusComponent() { return 'entity.name' }
+    
+    def createObject() {
+        return [
+            payerrequired : false,
+        ];
+    }
+    
+    def getAppcodelist() {
+        def openers = InvokerUtil.lookupOpeners('collection')
+        def list = []
+        openers.each {
+            if( it.properties.afid == entity.afid ) {
+                list.add( it.properties.appcode )
+            }
+        }
+        if( ! list )  {
+            list.add( 'cash_ticket' )
+        }
+        return list
+    }
+    
+    def getAflist() {
+        return afService.getList(null, null)*.objid;
+    }
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.tc.master.ui.CollectionTypePage"/>
+    </pages>
+</workunit>

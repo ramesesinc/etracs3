@@ -1,0 +1,26 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="DT01" action="create" caption="Discount Type" role="MASTER_ENCODER" permission="discounttype.create" target="window" />
+        <invoker type="discounttype_create" action="create" caption="Discount Type" target="window"/>
+        <invoker type="discounttype_open" action="open" caption="Discount Type" target="window"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class DiscountTypeController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+    String serviceName = 'DiscountTypeService'
+    String objectName  = 'discounttype'
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.tc.master.ui.DiscountTypePage"/>
+    </pages>
+</workunit>

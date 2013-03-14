@@ -1,0 +1,27 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/rpt" caption="Kind of Buildings" role="MASTER_ENCODER" permission="bldgkind.view" target="window" index="4" />
+        <invoker type="quick_launcher" code="KB00" caption="Kind of Buildings" role="MASTER_ENCODER" permission="bldgkind.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class KindofBuildingMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'KindofBuildingService'
+            String objectName = 'bldgkind'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"bldgcode", caption:"Code", minWidth:50),
+                    new Column(name:"bldgkind", caption:"Title", minWidth:200)
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

@@ -1,0 +1,91 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="BNKA01" action="create" caption="Bank Account" role="MASTER_ENCODER" permission="bankacct.create" target="window" />
+        <invoker type="bankacct_create" action="create" caption="Bank Account" target="window"/>
+        <invoker type="bankacct_open" action="open" caption="Bank Account" target="window"/>
+        
+        <invoker type="formActions" action="approve" caption="Approve" mnemonic="a" immediate="true" visibleWhen="#{entity.docstate == 'DRAFT' and mode=='read'}"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class BankAcctController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+    @Service('BankAcctService')
+    def svc 
+    
+    @Service('FundService')
+    def fundSvc
+    
+    def bankResult
+    def bank
+    
+    String serviceName = 'BankAcctService'
+    String objectName  = 'bankaccount'
+    String getCreateFocusComponent() { return 'entity.acctno' }
+    String getEditFocusComponent() { return 'entity.acctno' }
+    
+    boolean canEdit(){
+        if( entity.docstate == 'APPROVED' ) return false
+        if( mode != MODE_READ ) return false
+        return true
+    }
+    
+    boolean canDelete(){
+        return canEdit()
+    }
+    
+    void approve(){
+        if( MsgBox.confirm('Approve record?') ){
+            entity = service.approve( entity )
+        }
+    }
+    
+    String open() {
+        super.open()
+        bank = [bankcode:entity.bankcode]
+        return null
+    }
+    
+    def createObject(){
+        bank = [:]
+        return super.createObject()
+    }
+    
+    def getAccttypes() {
+        return svc.getAccountTypeList()
+    }
+    
+    def getFunds() {
+        return fundSvc.getFundsWithBankAccount().fundname 
+    }
+    
+    def getLookupBank() {
+        return InvokerUtil.lookupOpener("bank:lookup.bank", [:]);        
+    }
+    
+    void setBank( bank ){
+        this.bank = bank
+        entity.bankid = bank?.objid;
+        entity.bankcode = bank?.bankcode;
+        entity.bankname = bank?.bankname;
+        entity.branchname = bank?.branchname;
+    }
+    
+    List getCurrencylist() {
+        return ['PHP','DOLLAR']
+    }
+    
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.tc.master.ui.BankAcctPage"/>
+    </pages>
+</workunit>

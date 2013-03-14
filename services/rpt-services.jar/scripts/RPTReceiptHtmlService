@@ -1,0 +1,138 @@
+import com.rameses.common.*
+import com.rameses.annotations.*
+
+class RPTReceiptHtmlService
+{
+	@PersistenceContext('main')
+	def em
+	
+	@Service('ReceiptHtmlService')
+	def htmlSvc
+	
+	@Service('ReceiptService')
+	def receiptSvc 
+	
+	@Service('NumberService')
+	def numSvc
+	
+	def SCHEMANAME = 'receipt:receipt'
+	
+	@ProxyMethod
+	public def getHtml( receiptid ) {
+        def rct = receiptSvc.open( receiptid )
+		if( ! rct ) return ''
+		def info = htmlSvc.buildInfo( rct )
+		// def items = htmlSvc.buildItems( rct )
+		def items = buildItems( rct )
+		return """
+			<html>
+				<head>
+				</head>
+				<body>
+					$info
+					$items
+				<body>
+			</html>
+		"""
+	}
+	
+	def buildItems( rct ){
+		def onlinepmts = em.sqlContext.createNamedQuery('rptreceipt:getRPTPayments').setParameter('receiptid', rct.objid).resultList
+		def manualpmts = em.sqlContext.createNamedQuery('rptreceipt:getRPTManualPayments').setParameter('receiptid', rct.objid).resultList
+		def html = ''
+		html += '<table border="1">'
+		html += getHeader()
+		html += buildOnlineItems( onlinepmts )
+		html += buildManualItems( manualpmts )
+		html += '</table>'
+		return html 
+	}
+	
+	def buildManualItems( list ){
+		def html = ''
+		list.each{
+			def assessedvalue = numSvc.format('#,##0', it.assessedvalue)
+			def basic = it.basic + it.basicprev + it.basicprior 
+			def basicdp = it.basicint + it.basicprevint + it.basicpriorint - it.basicdisc 
+			def sbasic = numSvc.format('#,##0.00', basic)
+			def sbasicdp = numSvc.format('#,##0.00', basicdp)
+			
+			def sef = it.sef + it.sefprev + it.sefprior 
+			def sefdp = it.sefint + it.sefprevint + it.sefpriorint - it.sefdisc 
+			def ssef = numSvc.format('#,##0.00', sef)
+			def ssefdp = numSvc.format('#,##0.00', sefdp)
+			
+			def samount = numSvc.format('#,##0.00', it.amount)
+			
+			html += '<tr>'
+			html += '<td>' + it.taxpayername +'</td>'
+			html += '<td>' + it.tdno + '</td>'
+			html += '<td>' + it.barangay + '</td>'
+			html += '<td>' + it.classcode + '</td>'
+			html += '<td>' + it.rputype + '</td>'
+			html += '<td>' + it.cadastrallotno + '</td>'
+			html += '<td align="right">' + assessedvalue + '</td>'
+			html += '<td>' + it.period + '</td>'
+			html += '<td align="right">' + sbasic + '</td>'
+			html += '<td align="right">' + sbasicdp + '</td>'
+			html += '<td align="right">' + ssef + '</td>'
+			html += '<td align="right">' + ssefdp + '</td>'
+			html += '<td align="right">' + samount + '</td>'
+			html += '</tr>'
+		}
+		return html 
+	}
+	
+	
+	def buildOnlineItems( list ){
+		def html = ''
+		list.each{
+			def assessedvalue = numSvc.format('#,##0', it.assessedvalue)
+			def basic = numSvc.format('#,##0.00', it.basic)
+			def basicdp = numSvc.format('#,##0.00', it.basicdp)
+			def sef = numSvc.format('#,##0.00', it.sef)
+			def sefdp = numSvc.format('#,##0.00', it.sefdb)
+			def amount = numSvc.format('#,##0.00', it.amount)
+			
+			html += '<tr>'
+			html += '<td>' + it.taxpayername +'</td>'
+			html += '<td>' + it.tdno + '</td>'
+			html += '<td>' + it.barangay + '</td>'
+			html += '<td>' + it.classcode + '</td>'
+			html += '<td>' + it.rputype + '</td>'
+			html += '<td>' + it.cadastrallotno + '</td>'
+			html += '<td align="right">' + assessedvalue + '</td>'
+			html += '<td>' + it.period + '</td>'
+			html += '<td align="right">' + basic + '</td>'
+			html += '<td align="right">' + basicdp + '</td>'
+			html += '<td align="right">' + sef + '</td>'
+			html += '<td align="right">' + sefdp + '</td>'
+			html += '<td align="right">' + amount + '</td>'
+			html += '</tr>'
+		}
+		return html 
+	}
+	
+	
+	def getHeader() {
+		return '''
+			<tr>
+			<th>Owner Name</th>
+			<th>TD No.</th>
+			<th>Location</th>
+			<th>Class</th>
+			<th>Type</th>
+			<th>Lot No.</th>
+			<th>Current A.V.</th>
+			<th>Paid Period</th>
+			<th>Basic</th>
+			<th>D/P</th>
+			<th>SEF</th>
+			<th>D/P</th>
+			<th>Total</th>
+			</tr>
+		'''
+	}
+	
+	
+}

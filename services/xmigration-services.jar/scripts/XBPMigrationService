@@ -1,0 +1,68 @@
+import com.rameses.common.*
+import com.rameses.annotations.*
+
+class XBPMigrationService{
+	
+	@PersistenceContext('main')
+	def em 
+	
+	@Service('NumberService')
+	def numSvc
+	
+	@ProxyMethod
+	public void fixExpiredAppLobs() {
+		def apps = em.sqlContext.createQuery('SELECT objid FROM bpapplication WHERE iyear = 2013 OR docstate = $P{docstate}')
+								.setParameter('docstate', 'EXPIRED')
+								.resultList 
+		apps.each{ app ->
+			fixAppLobsClassificationId( app.objid )
+		}
+	}
+	
+	@ProxyMethod
+	public void fixYearlyAppLobs( iyear ) {
+		if( ! iyear ) throw new Exception('Year is required.')
+		def apps = em.sqlContext.createQuery('SELECT objid FROM bpapplication WHERE iyear = $P{iyear}')
+							.setParameter('iyear', iyear )
+							.resultList 
+		apps.each{ app ->
+			fixAppLobsClassificationId( app.objid )
+		}
+	}
+	
+	@ProxyMethod
+	public void fixAllAppLobs() {
+		def apps = em.sqlContext.createQuery('SELECT objid FROM bpapplication ').resultList 
+		apps.each{ app ->
+			fixAppLobsClassificationId( app.objid )
+		}
+	}
+	
+	@ProxyMethod
+	public void fixAppLobsClassificationId( appid ) {
+		def app = em.sqlContext.createQuery('SELECT objid, docstate, iyear, lobs FROM bpapplication WHERE objid = $P{objid}')
+						.setParameter('objid', appid )
+						.singleResult 
+						
+		if( ! app ) throw new Exception('Invalid AppID')
+		
+		println 'Fixing App ID -> ' + appid 
+		
+		app.lobs = em.serializer.read( app.lobs )
+		
+		app.lobs.each{ 
+			def lob = em.sqlContext.createQuery('SELECT * FROM lob WHERE objid = $P{objid}')
+						.setParameter('objid', it.lobid)
+						.singleResult 
+			if( lob ) {
+				it.classificationid = lob.classificationid 
+			}
+		}
+		
+		em.sqlContext.createExecutor('UPDATE bpapplication SET lobs = $P{lobs} WHERE objid = $P{objid}')
+						.setParameter('lobs', em.serializer.write(app.lobs))
+						.setParameter('objid', appid)
+						.execute()
+		
+	}
+}

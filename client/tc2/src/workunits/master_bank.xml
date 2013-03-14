@@ -1,0 +1,28 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="BANK01" action="create" caption="Bank" role="MASTER_ENCODER" permission="bank.create" target="window" />
+        <invoker type="bank_create" action="create" caption="Bank" target="window"/>
+        <invoker type="bank_open" action="open" caption="Bank" target="window"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class BankController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+    String serviceName = 'BankService'
+    String objectName  = 'bank'
+    String getCreateFocusComponent() { return 'entity.bankcode' }
+    String getEditFocusComponent() { return 'entity.bankcode' }
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.tc.master.ui.BankPage"/>
+    </pages>
+</workunit>

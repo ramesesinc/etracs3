@@ -1,0 +1,25 @@
+".*" [true == true] {
+    enabled:true;
+}
+
+
+"selectedLand|selectedAffectedRpu" [ true == true ] {
+    readonly:false;
+}
+
+"editSubdividedLand|removeSubdividedLand" [ selectedLand == null || selectedLand.newpin == null ] {
+    enabled:false;
+}
+
+"editSubdividedLand|removeSubdividedLand" [ selectedLand != null && selectedLand.newpin != null ] {
+    enabled:true;
+}
+
+
+"subdivision.*|editSubdividedLand|removeSubdividedLand|addSubdividedLand" [ allowEdit == false ] {
+    enabled:false;
+}
+
+"selectedLand|selectedAffectedRpu" [ allowEdit == false ] {
+    readonly:true;
+}

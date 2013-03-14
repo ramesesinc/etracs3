@@ -1,0 +1,6 @@
+<workunit  extends="workunits/rulemgmt.xml">
+    
+     <invoker folderid="/explorer/rulemgmt/bplo" action="init" caption="BP Billing Rules"  
+            role="RULE_AUTHOR" permission="bpbillingrule.view" index="50" ruleset="bpbilling"/>
+    
+</workunit>

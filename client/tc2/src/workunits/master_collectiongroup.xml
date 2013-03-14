@@ -1,0 +1,76 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="COLG01" action="create" caption="Collection Group" role="MASTER_ENCODER" permission="collectiongroup.create" target="window" />
+        <invoker type="collectiongroup_create" action="create" caption="Collection Group" target="window"/>
+        <invoker type="collectiongroup_open" action="open" caption="Collection Group" target="window"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class CollectionGroupController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+    @Service('CollectionGroupService')
+    def svc 
+    
+    def selectedIncomeAcct
+    
+    String serviceName = 'CollectionGroupService'
+    String objectName  = 'collectiongroup'
+    
+    def createObject() {
+        def entity = [:]
+        entity.items = []
+        incomeAcctHandler.load()
+        return entity
+    }
+
+    def incomeAccountLookup = InvokerUtil.lookupOpener('incomeacct:lookup', [:]);
+
+    void setIncomeAccount( ia ) {
+        if( !ia ) return;
+
+        def item = [groupid: entity?.objid, incomeaccountid: ia.objid, accttitle: ia.accttitle]
+        if( mode == 'create' ) {
+            def old = entity?.items.find { it.incomeaccountid == ia.objid }
+            if( old ) return;
+            entity?.items.add( item )
+        }
+        else {
+            svc.addItem( item )
+        }
+        incomeAcctHandler.load()
+    }
+    
+    def incomeAcctHandler = [
+        getColumns: {
+            return [
+                new Column(name:"accttitle", caption:"Account Title")
+            ]
+        },
+        fetchList: { p ->
+            if( !entity ) return []                    
+            if( mode == 'create' ) return entity.items
+            return svc.getItems( entity )
+        },
+        onRemoveItem: { o ->
+            if(!MsgBox.confirm('Are you sure you want to delete this entry?')) return
+            if( mode == 'create' )
+                entity.items.remove( o )
+            else
+                svc.removeItem( o )
+        }
+    ] as SubListModel
+    
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.tc.master.ui.CollectionGroupPage"/>
+    </pages>
+</workunit>

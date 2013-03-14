@@ -1,0 +1,186 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/report/rpt" action="init" caption="Notice of Assessment" role="ASSESSOR_REPORTS" permission="rptreport.notice" index="1" />
+        <invoker type="rptreport" action="init" opener="notice" caption="Notice of Assessment" target="window" role="ASSESSOR_REPORTS" permission="rptreport.notice" index="1" />
+        <invoker type="rptreport.notice" action="init" caption="Notice of Assessment" role="ASSESSOR_REPORTS" permission="rptreport.notice" />
+        
+        <invoker type="formActions" action="_close" caption="Close" mnemonic="c" shortcut="ctrl + C" visibleWhen="#{mode != 'init'}" icon="images/cancel.png" immediate="true"/>
+        <invoker type="formActions" action="create" caption="New" mnemonic="n" shortcut="ctrl + N" visibleWhen="#{mode == 'viewlist'}" icon="images/doc-new.png"/>
+        <invoker type="formActions" action="doPreview" caption="Preview" mnemonic="v" icon="images/doc-view.png" visibleWhen="#{mode == 'viewlist' and selectedItem != null}"/>
+        <invoker type="formActions" action="receive" caption="Receive" icon="images/doc-edit.png" visibleWhen="#{mode == 'viewlist' and selectedItem != null}"/>
+        
+        <invoker type="formActions" action="back" caption="Back" mnemonic="b" shortcut="ctrl + B" visibleWhen="#{mode == 'init'}" icon="images/back.png" immediate="true" />
+        <invoker type="formActions" action="preview" caption="Preview" mnemonic="v" visibleWhen="#{mode == 'init'}" icon="images/doc-view.png"/>
+        <invoker type="formActions" action="print" caption="Print" mnemonic="p" shortcut="ctrl + P" visibleWhen="#{mode == 'init'}" />
+        
+        <invoker type="previewActions" action="back" caption="Back" icon="images/back.png" immediate="true" />
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+import com.rameses.osiris2.reports.*;
+
+class NoticeReportController
+{
+    @Service("ReportParameterService")
+    def svcParams;
+    
+    @Service('RPTReportService') 
+    def svc 
+    
+    def mode
+    def searchText
+    def docstate
+    
+    def taxpayer
+    def faas 
+    def notice
+    def list = []
+    def selectedItem
+    def searchcriteria
+    
+    void init() {
+        mode = 'viewlist'
+        searchcriteria = 'bytaxpayer'
+    }
+    
+    def create() {
+        mode = 'init'
+        notice = [:]
+        taxpayer = null
+        faas = null
+        return 'init'
+    }
+    
+    void setTaxpayer( taxpayer ) {
+        this.taxpayer = taxpayer 
+        notice.taxpayerid       = taxpayer?.objid
+        notice.taxpayerno       = taxpayer?.entityno
+        notice.taxpayername     = taxpayer?.entityname
+        notice.taxpayeraddress  = taxpayer?.entityaddress
+    }
+    
+    void setFaas( faas  ) {
+        if( faas?.docstate != 'CURRENT' ) throw new Exception( 'Only current FAAS is allowed.' )
+        this.faas       = faas
+        notice.faasid   = faas?.objid
+    }
+    
+    void setSearchcriteria( searchcriteria ) {
+        this.searchcriteria = searchcriteria
+        if( searchcriteria == 'bytaxpayer' )
+            faas = null
+        else
+            taxpayer = null
+    }
+    
+    def doPreview() {
+        notice = svc.openNotice( selectedItem.objid  )
+        report.viewReport()
+        return 'preview' 
+    }
+
+    def preview() {
+        notice = svc.generateNotice( notice )
+        list.add( notice )
+        listHandler.load()
+        report.viewReport()
+        return 'preview' 
+    }
+    
+    void print(){
+        notice = svc.generateNotice( notice )
+        report.viewReport()
+        ReportUtil.print( report.report, true )
+    }
+    
+    def onrefreshListHandler = {
+        search()
+    }
+    
+    def receive() {
+        if( selectedItem.docstate == 'CLOSED' ) throw new Exception('Notice of Assessment is already closed.')
+        return InvokerUtil.lookupOpener('receivenotice', [notice:selectedItem, onrefreshList: onrefreshListHandler])
+    }
+    
+    def back() {
+        mode = 'viewlist'
+        return 'default' 
+    }
+    
+    void search() {
+        listHandler.load()
+    }
+    
+    def reportNoticeByTd = [
+        getReportName : { return 'etracs2/rpt/report/noticebytd/noticebytd.jasper' },
+        getReportData : { return notice },
+        getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ) }
+    ] as ReportModel
+    
+    def reportNotice = [
+        getReportName : { return 'etracs2/rpt/report/notice/notice.jasper' },
+        getSubReports : { 
+            return [
+                new SubReport( 'NoticeItem', 'etracs2/rpt/report/notice/noticeitem.jasper' ),
+            ] as SubReport[]
+        },
+        getReportData : { return notice },
+        getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ) }
+    ] as ReportModel
+    
+    def getReport() {
+        if( notice.items.size() == 1 )
+            return reportNoticeByTd
+        else
+            return reportNotice
+    }
+    
+    def getLookupTaxpayer() {
+        return InvokerUtil.lookupOpener( 'entity.lookup', [:] )
+    }
+    
+    def getLookupFAAS() {
+        return InvokerUtil.lookupOpener( 'faas.lookup', [searchText:notice.taxpayerid] )
+    }
+    
+    def listHandler = [
+        getRows     : { return 25 },
+        getColumns  : { return [
+            new Column(name:'docstate', caption:'State'),
+            new Column(name:'docno', caption:'Notice No.'),
+            new Column(name:'taxpayername', caption:'Taxpayer'),
+            new Column(name:'taxpayeraddress', caption:'Address'),
+            new Column(name:'preparedby', caption:'Prepared By'),
+            new Column(name:'approvedby', caption:'Approved By'),
+            new Column(name:'receivedby', caption:'Received By'),
+            new Column(name:'dtdelivered', caption:'Date Delivered'),
+            new Column(name:'remarks', caption:'Remarks'),
+        ]},
+        fetchList   : {
+            list = svc.getNoticeList( searchText, docstate, it )
+            return list
+        }
+    ] as PageListModel
+    
+    List getStates() {
+        return ['OPEN', 'CLOSED']
+    }
+    
+    void setDocstate( docstate ) {
+        this.docstate = docstate
+        search()
+    }
+}
+]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.rpt.report.ui.NoticeListPage" />
+        <page name="init" template="etracs2.rpt.report.ui.NoticeReportPage" />
+        <page name="preview" template="etracs2.common.PreviewPage" />
+    </pages>
+</workunit>

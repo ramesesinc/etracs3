@@ -1,0 +1,39 @@
+"entity.*|aftype" [mode == 'read'] {
+    readonly:true;
+}
+
+"entity.*|aftype" [mode != 'read'] {
+    readonly:false;
+}
+
+"selectedItem|searchText" [mode == 'read'] {
+    enabled:true;
+}
+
+"selectedItem|searchText" [mode != 'read'] {
+    enabled:false;
+}
+
+"entity.denomination" [entity.aftype == 'nonserial'] {
+    enabled:true;
+}
+
+"entity.denomination" [entity.aftype != 'nonserial'] {
+    enabled:false;
+}
+
+"entity.objid" [mode == 'create'] {
+    readonly:false;
+}
+
+"entity.objid" [mode != 'create'] {
+    readonly:true;
+}
+
+"entity.serieslength" [entity.aftype == 'serial']{
+    enabled:true;
+}
+
+"entity.serieslength" [entity.aftype != 'serial']{
+    enabled:false;
+}

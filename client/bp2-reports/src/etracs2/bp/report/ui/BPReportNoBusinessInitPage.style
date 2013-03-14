@@ -1,0 +1,11 @@
+"entity.*|taxpayer" [ mode == 'create'] {
+    enabled:true;
+}
+
+"entity.*|taxpayer" [ mode != 'create'] {
+    enabled:false;
+}
+
+"entity.txnno" [true == true] {
+    enabled:true;
+}

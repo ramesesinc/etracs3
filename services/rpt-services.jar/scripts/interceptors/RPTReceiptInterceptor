@@ -1,0 +1,138 @@
+import com.rameses.annotations.*
+import com.rameses.eserver.*;
+import com.rameses.common.*;
+
+class RPTReceiptInterceptor  
+{
+	@PersistenceContext('main')
+	def em
+	
+	@Service('Var')
+	def var 
+    
+	@Service('LogService')
+    def logSvc
+    
+    @Service('RPTReceiptService') 
+    def receiptSvc
+	
+	@Service('MessagingService')
+	def msgSvc
+	
+	
+	/*==============================================================
+	** LOCAL INTERCEPTORS 
+	==============================================================*/
+	@After(pattern='RPTReceiptService.create') 
+	public void interceptAfterCreate( evt ) {
+		
+		if( msgSvc.remoteConnectionActive( ) == false )
+			return 
+		
+		def receipt = evt.result 
+		forwardCollectionToMunicipality( receipt, receipt._rptpaymentlist, receipt._rptpaymentdetaillist )
+		forwardCollectionToProvince( receipt, receipt._rptpaymentlist, receipt._rptpaymentdetaillist )
+		receipt.remove( '_rptpaymentlist')
+		receipt.remove('_rptpaymentdetaillist')
+	}
+	
+	@After(pattern='RPTReceiptService.voidReceipt') 
+	public void interceptVoidReceipt( evt ) {
+		if( msgSvc.remoteConnectionActive( ) == false )
+			return 
+			
+		def receipt = evt.result 
+		def sys_option = receipt.sys_option
+		
+		if( sys_option == null || sys_option.action != 'compromise' ) {
+			postRemoteVoid( receipt )
+			postProvinceVoidMessage( receipt )
+		}
+	}
+	
+	void postRemoteVoid( receipt ) {
+		def rct = em.sqlContext.createNamedQuery('rptreceipt:getExtendedInfo').setParameter('objid', receipt.objid).singleResult 
+		if( ! rct ) return 
+		
+		rct = em.serializer.read( rct.extended )
+		if( rct.isremotecollection ) {
+			def data = [receiptid:receipt.obbjid, reason:receipt._voidreason ]
+			def msg = msgSvc.createMessage( 'rptreceipt_void_remote_collection', 'Void realty tax Receipt No. ' + receipt.serialno + '.', data)
+			msg.receiverid = rct.collectedforid
+			msg.receiver  = [id:rct.collectedforid, name:rct.collectedfor, type:'' ]
+			msgSvc.send( msg )
+		}
+	}
+	
+	void postProvinceVoidMessage( receipt ) {
+		if( var.lgu_type?.toLowerCase() != 'municipality') return 
+		
+		def rct = em.sqlContext.createNamedQuery('rptreceipt:getExtendedInfo').setParameter('objid', receipt.objid).singleResult 
+		if( ! rct ) return 
+		rct = em.serializer.read( rct.extended )
+		def data = [receiptid:receipt.objid, reason:receipt._voidreason ]
+		def msg = msgSvc.createMessage( 'rptreceipt_void_remote_collection', 'Void realty tax Receipt No. ' + receipt.serialno + '.',  data)
+		msg.receiver = msgSvc.getDefaultReceiver()
+		msg.receiverid = msg.receiver.id 
+		msgSvc.send( msg )
+	}
+	
+	void forwardCollectionToMunicipality( receipt, rptpaymentlist, rptpaymentdetaillist ) {
+		if( var.lgu_type?.toLowerCase() == 'province' ) {
+			def receiver = em.sqlContext.createNamedQuery('rptreceipt:getSenderInfo').setParameter('ledgerid', rptpaymentlist[0].rptledgerid).singleResult 
+			if( receiver ) {
+				sendRemoteCollectionMessage( rptpaymentlist, rptpaymentdetaillist, receiver )
+			}
+		}
+	}
+	
+	void forwardCollectionToProvince( receipt, rptpaymentlist, rptpaymentdetaillist ) {
+		if( var.lgu_type?.toLowerCase() == 'municipality' ) {
+			def receiver = msgSvc.getDefaultReceiver()
+			sendRemoteCollectionMessage( rptpaymentlist, rptpaymentdetaillist, receiver )
+		} 
+	}
+	
+	void sendRemoteCollectionMessage( rptpaymentlist, rptpaymentdetaillist, receiver ) {
+		def data = [paymentlist:rptpaymentlist, paymentdetailist:rptpaymentdetaillist]
+		def msg = msgSvc.createMessage( 'rptreceipt_post_remote_collection', 'Post Realty Tax Collection', data)
+		msg.receiverid = receiver.id
+		msg.receiver  = receiver
+		msgSvc.send( msg )
+	}
+	
+	
+	
+	
+	/*==============================================================
+	** REMOTE INTERCEPTORS 
+	==============================================================*/
+	
+	@After(pattern='MessagingService.onMessage', eval="#{ result.type.startsWith('rptreceipt')}") 
+	public void interceptOnMessage( evt ) {
+        def msg = evt.result 
+		println "RPTReceiptInterceptor [${msg.type}]"
+		try{
+			if( msg.type == 'rptreceipt_post_remote_collection') postRemoteRPTCollection( msg ) 
+			else if( msg.type  == 'rptreceipt_void_remote_collection') postVoidRemoteRPTCollection( msg ) 
+		}
+		catch( e ) {
+			msgSvc.errorProcessing(msg, e.message )
+		}
+	}
+    
+	void postVoidRemoteRPTCollection( msg ) {
+		receiptSvc.postVoidRemoteRPTCollection( msg )
+		msgSvc.processedSuccessfully(msg)
+		logSvc.log('RPTRECEIPT-POST-VOID-REMOTE-COLLECTION', 'RPTReceipt', msg.objid )
+    }
+	
+	void postRemoteRPTCollection( msg ) {
+		def retval = receiptSvc.postRemoteRPTCollection( msg )
+		msgSvc.processedSuccessfully(msg)
+		logSvc.log('RPTRECEIPT-POST-REMOTE-COLLECTION', 'RPTReceipt', msg.objid )
+    }
+	
+}
+
+

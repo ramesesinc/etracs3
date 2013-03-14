@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    <invokers>
+        <invoker type="rptcertifications" action="init" caption="Land with No Improvement by TD" target="window" index="4" role="CERTIFICATION_ISSUANCE" permission="noimprovementbytdno.open" />
+        <invoker type="noimprovementbytdno.view"  caption="Land with No Improvement by TD" index="4" action="doPreview" role="CERTIFICATION_ISSUANCE" permission="noimprovementbytdno.view"/>
+        
+        <invoker folderid="/explorer/txn/rpt/cert" action="init" caption="Land with No Improvement by TD" target="window" index="5" role="CERTIFICATION_ISSUANCE" permission="noimprovementbytdno.create" />
+        <invoker type="quick_launcher" action="init" code="RCNI01" caption="Land with No Improvement by TD" target="window" index="5" role="CERTIFICATION_ISSUANCE" permission="noimprovementbytdno.create" />
+        
+        <!-- default -->
+        <invoker type="formActions" action="_close"     caption="Cancel"    shourtcut="c" mnemonic="c"  index="0"  visibleWhen="#{mode == '_default'}" immediate="true" icon="images/cancel.png" />
+        <invoker type="formActions" action="doPreview"  caption="Preview"   shourtcut="v" mnemonic="v"  index="2"  visibleWhen="#{mode == 'certified'}" icon="images/doc-view.png" />
+        <invoker type="formActions" action="doSave"     caption="Save"      shourtcut="s" mnemonic="s"  index="3"  visibleWhen="#{mode == '_default'}" icon="images/save.png" role="APPRAISER" />
+        
+        <!-- print preview -->
+        <invoker type="formActions" action="doClose"  caption="Close"  shortcut="ctrl c" mnemonic="c"  index="0" visibleWhen="#{mode != '_default'}" icon="images/cancel.png" />
+        
+    </invokers>
+    <code lang="groovy">
+
+    <![CDATA[
+        import com.rameses.rcp.annotations.*
+        import com.rameses.rcp.common.*
+        import com.rameses.osiris2.client.*
+        import com.rameses.osiris2.client.*;
+        import com.rameses.osiris2.reports.*;
+        
+        public class RPTCertificationsNoImproveTDNoController 
+        {
+            @Service('ReportParameterService')
+            def svcParams;
+        
+            @Service('RPTCertificationsService')
+            def svc;
+        
+            @Service('DateService')
+            def dtSvc;
+
+            @Binding 
+            def binding;
+            
+            def certification = [:];
+            def list = [];
+            def mode = '_default';
+            def faas;
+            
+            void init() {
+                certification.certifiedby = svcParams.getStandardParameter( OsirisContext.env.USERNAME ).ASSESSORNAME;
+                certification.certifiedbytitle = svcParams.getStandardParameter( OsirisContext.env.USERNAME ).ASSESSORTITLE;
+                certification.byauthority = svcParams.getStandardParameter( OsirisContext.env.USERNAME ).ASSESSOROFFICETITLE
+                certification.purpose = "whatever legal purposes it may serve him/her"; 
+                certification.serverDate = new java.sql.Date( dtSvc.serverDate.getTime() );
+                certification.caption = 'Land with No Improvement by TD No.'
+            }
+            
+            void setFaas( faas ){
+                if( faas ){
+                    this.faas = faas;
+                    certification.putAll( faas );
+                    certification.requestedby = faas.taxpayername;
+                    binding.refresh("certification.*");
+                }
+            }
+            
+            def getLookupFaas(){
+                return InvokerUtil.lookupOpener("faas.lookup", [:] );
+            }
+            
+            public void setOfficialuse( o ){
+                certification.official = o;
+                certification.orno = ( o ) ? 'Official Use' : '';
+                certification.ordate = ( o ) ? null : certification.serverDate;
+                certification.oramount = ( o ) ? 0.0 : 0.0;
+                certification.stampamount = ( o ) ? 0.0 : 0.0;
+            }
+            
+            public def getOfficialuse(){
+                return certification.official;
+            }
+            
+            def report =[
+                    getReportName : { 'etracs2/rpt/report/certifications/noimprovementbytd/NoImprovementByTDCertification.jasper' },
+                    getReportData : { return certification; },
+                    getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ); }
+                ] as ReportModel;
+                      
+            public def doPreview(){
+                report.viewReport();
+                mode = '_default';
+                return "preview";
+            }
+            
+            public def doSave(){
+                certification.putAll( svc.fetchDataNoImprovementTDNo(certification) );
+                certification.putAll( svc.doSave( certification ) )
+                return doPreview()
+            }
+            
+            @Close
+            public def doClose(){
+                mode = '_default';
+                certification = [:];
+                faas = null
+                init()
+                return '_close';
+            }
+            
+        }
+    ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.certification.RPTCertificationByTDNoPage" />
+        <page name="preview" template="etracs2.common.PreviewPage" />
+        
+    </pages>
+</workunit>

@@ -1,0 +1,26 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="ACCTG01" action="create" caption="Income Account Group" role="MASTER_ENCODER" permission="incomeacctgroup.create" target="window" />
+        <invoker type="incomeacctgroup_create" action="create" caption="Income Account Group" target="window"/>
+        <invoker type="incomeacctgroup_open" action="open" caption="Income Account Group" target="window"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class IncomeAcctGroupController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+    String serviceName = 'IncomeAcctGroupService'
+    String objectName  = 'incomeacctgroup'
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.tc.master.ui.IncomeAcctGroupPage"/>
+    </pages>
+</workunit>

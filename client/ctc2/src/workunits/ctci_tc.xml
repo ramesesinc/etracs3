@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    
+    @description: CTC-Individual TC Plugin
+    
+-->
+<workunit>
+    <invokers>
+        <invoker type="collection" caption="CTC-Individual" afid="0016" appcode="ctc_individual" />
+        <invoker type="tc:ctc_individual" action="doInit" caption="CTC-Individual" afid="0016" />
+        
+        <invoker type="initActions" action="back" caption="Back" mnemonic="b"  immediate="true" icon="images/back.png"/>
+        
+        <invoker type="formActions" action="doNew" caption="New" mnemonic="n" shortcut="ctrl N" visibleWhen="#{mode == 'view' and txnmode != null}"  icon="images/doc-new.png"/>
+        <invoker type="formActions" action="_init" caption="Back" mnemonic="b"  immediate="true" visibleWhen="#{mode == 'create'}" icon="images/back.png"/>
+        <invoker type="formActions" action="create" caption="Save" mnemonic="s" shortcut="ctrl S" visibleWhen="#{mode == 'create'}" icon="images/save.png"/>
+        <invoker type="formActions" action="update" caption="Save" mnemonic="s" shortcut="ctrl S" visibleWhen="#{mode == 'edit'}"  icon="images/save.png"/>
+        <invoker type="formActions" action="doPrint" caption="Print" mnemonic="p" shortcut="ctrl P" visibleWhen="#{mode == 'view'}" />
+        <invoker type="formActions" action="doVoid" caption="Void" mnemonic="v" visibleWhen="#{mode == 'view'}" icon="images/void.png"/>
+        
+        <invoker type="receipt.actions:tc:ctc_individual" action="edit" caption="Edit" mnemonic="e" shortcut="ctrl E" target="popup"  icon="images/edit.png"/>
+        <invoker type="receipt.actions:tc:ctc_individual" action="doPrint" caption="Print" mnemonic="p" shortcut="ctrl P"/>
+        <invoker type="receipt.actions:tc:ctc_individual" action="doVoid" caption="Void" mnemonic="v" icon="images/doc-void.png"/>
+        
+        <invoker type="inquiry:tc:ctc_individual" action="initInquiry" caption="Inquiry" />
+    </invokers>
+    
+    <code lang="groovy">
+        <![CDATA[
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        import com.rameses.osiris2.reports.*
+        import etracs2.ctc.tc.ui.*
+        
+        
+        public class CTCIndividualReceiptController extends AbstractCTCIndividualController
+        {
+            @Service("EntityService")
+            def entitySvc;
+            
+            @Service("CTCService")
+            def ctcSvc;
+            
+            @Service("ReceiptService")
+            def svc;
+            
+            @Service('ReportParameterService')
+            def paramsSvc;
+            
+            @Service('CTCReceiptHtmlService')
+            def htmlSvc;
+        
+            def collectiontitle = 'COMMUNITY TAX CERTIFICATE (INDIVIDUAL)'
+            
+            def doInit(){
+                super.init();
+                entity.doctype = 'CTCI'
+                return 'init'
+            }
+            
+            def getService() { return svc }
+            def getHtmlService() { return htmlSvc }
+            
+            def getCollectionTitle() { return collectiontitle }
+
+            def getParameters() { 
+                return paramsSvc.getStandardParameter( OsirisContext.env.USERNAME )
+            }
+        }
+        
+        ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.ctc.tc.ui.IndividualPage"/>
+        <page name="init" template="etracs2.ctc.tc.ui.CTCInitPage"/>
+        <page name="new" template="etracs2.ctc.tc.ui.IndividualPage"/>
+        <page name="view" template="etracs2.tc.collection.CollectionViewPage"/>
+        <page name="html" template="etracs2.tc.HtmlPage"/>
+    </pages>
+</workunit>

@@ -1,0 +1,41 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="FUND01" action="create" caption="Fund" role="MASTER_ENCODER" permission="fund.create" target="window" />
+        <invoker type="fund_create" action="create" caption="Fund" target="window"/>
+        <invoker type="fund_open" action="open" caption="Fund" target="window"/>
+        <invoker type="formActions" action="approve" shortcut="ctrl A" visibleWhen="#{mode == 'view' and entity.objid != null and entity.docstate=='DRAFT'}" immediate="true" caption="Approve" mnemonic="d" icon="images/doc-approve.png"  />
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+import java.rmi.server.UID
+
+class FundController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+    String serviceName = 'FundService'
+    String objectName  = 'fund'
+    String getCreateFocusComponent() { return 'entity.fund' }
+    String getEditFocusComponent() { return 'entity.fund' }
+    
+    def createObject() {
+        return [
+            docstate        : 'DRAFT',
+            bankacctrequired  : true,
+        ];
+    }
+    
+    def getFundList(){
+        return ['GENERAL', 'SEF', 'TRUST'];
+    }
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.tc.master.ui.FundPage"/>
+    </pages>
+</workunit>

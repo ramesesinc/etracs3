@@ -1,0 +1,128 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import com.rameses.util.*
+import com.rameses.sql.*
+import java.util.concurrent.*;
+import java.sql.*
+
+class AdminMigrationService
+{
+    @PersistenceContext("etracsv1")
+    def em1;
+    
+    @PersistenceContext("main")
+    def em2;
+	
+	@PersistenceContext("system")
+    def emsys;
+	
+	@Service('CommonMigrationService')
+	def commSvc;
+    
+    @Service('NumberService')
+    def numSvc
+    
+	@ProxyMethod 
+	public def getObjidList( version, objname ) {
+		return commSvc.getObjidList(version, objname, 'admin')
+	} 
+	
+	@ProxyMethod()
+	public def insertObject( version, objname, list )
+	{
+		return commSvc.insertObject(version, objname, list, 'admin')
+	}
+	
+	@ProxyMethod()
+	public void deleteTargetDB( objname )
+	{
+		em2.sqlContext.createExecutor("""
+			delete from $objname
+		""").execute();
+	}
+	
+	@ProxyMethod
+	public void createAdminAccount() {
+		def sql = """
+			insert into personnel ([objid],staffno,firstname,lastname) 
+			values ( 'admin', '00000000', 'admin', 'admin' )
+		"""
+		em2.sqlContext.createExecutor( sql).execute();
+		sql = """
+			insert into useraccount ([objid], [uid], pwd, usertype, firstname, lastname)
+			values('admin', 'admin', '02290d335d44fac6a4d6b3766f0bed51', 'personnel', 'admin', 'admin')
+		"""
+		em2.sqlContext.createExecutor( sql).execute();
+		sql = """
+			insert into jobposition([objid], [code] ,[title],[jobgroup],[orgunitid],[assigneeid],[jobstatus]) 
+			values( 'ADMIN', 'ADMIN', 'ADMIN', null, 'HR', 'ADMIN', 'R')
+		"""
+		em2.sqlContext.createExecutor( sql).execute();
+		
+	}
+	
+	@ProxyMethod
+	public void createOrgType() {
+		em2.sqlContext.createExecutor('''
+			insert into orgtype (name, system) VALUES ('ADMIN_UNIT','0')
+		''').execute()
+		
+		em2.sqlContext.createExecutor('''
+			insert into orgtype (name, system) VALUES ('BARANGAY','1')
+		''').execute()
+	}
+	
+	@ProxyMethod
+	public void updatePassword( ) {
+		def list = em2.sqlContext.createQuery( "select [objid], [uid] from useraccount where pwd = '' or pwd is null")
+					  .resultList;
+		list.each {
+			println "updating pwd for $it.uid"
+            def pwd = Encoder.MD5.encode( "1234", it.uid )
+            em2.sqlContext.createExecutor('update useraccount set pwd=? where objid=?')
+						  .setParameter(1, pwd)
+						  .setParameter(2, it.objid)
+						  .execute()
+		}
+	}
+	
+	@ProxyMethod
+	public void insertRole() {
+		def fhandler = { role ->
+				em2.sqlContext.createExecutor('''
+					insert into role( role, description, sysrole, system, domain, excluded )
+					values($P{role}, $P{description}, $P{sysrole}, $P{system}, $P{domain}, $P{excluded})
+				''')
+				.setParameters( role )
+				.execute()
+		}			
+		
+		def qry = emsys.sqlContext.createQuery('''
+					select
+						name as role, 
+						name as description, 
+						name as sysrole, 
+						1 as system, 
+						domain, 
+						null as excluded
+					from sys_role 
+		''')
+		
+		qry.fetchHandler = new CustomFetchHandler( handler: fhandler );
+		qry.resultList
+	}
+}	
+
+//====== helper class ==========
+
+class CustomFetchHandler extends MapFetchHandler {
+	
+	def handler;
+
+	public Object getObject(ResultSet rs) throws Exception {
+		def data = super.getObject( rs );
+		if( handler ) handler( data );
+		return null;
+	}
+	
+}

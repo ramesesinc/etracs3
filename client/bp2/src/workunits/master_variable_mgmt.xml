@@ -1,0 +1,28 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/bplo" caption="Variables" role="MASTER_ENCODER" permission="variable.view" target="window" index="15" />
+        <invoker type="quick_launcher" code="VAR00" caption="Variables" role="MASTER_ENCODER" permission="variable.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class VariableMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'VariableService'
+            String objectName = 'bpvariable'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"name", caption:"Name"),
+                    new Column(name:"caption", caption:"Caption"),
+                    new Column(name:"datatype", caption:"Data Type"),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

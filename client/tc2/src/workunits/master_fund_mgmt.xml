@@ -1,0 +1,30 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/treasury" caption="Funds" role="MASTER_ENCODER" permission="fund.view" target="window" index="10" />
+        <invoker type="quick_launcher" code="FUND00" caption="Funds" role="MASTER_ENCODER" permission="fund.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class FundMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'FundService'
+            String objectName  = 'fund'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"fund", caption:"Fund"),
+                    new Column(name:"subfund", caption:"Sub Fund"),
+                    new Column(name:"fundname", caption:"Fund Name"),
+                    new Column(name:"bankacctrequired", caption:"Account Required?", type:'boolean'),
+                    new Column(name:"docstate", caption:"State"),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

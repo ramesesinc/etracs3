@@ -1,0 +1,26 @@
+"selectedItem|searchText" [mode == 'view'] {
+    enabled:true;
+}
+
+"selectedItem|searchText" [mode != 'view'] {
+    enabled:false;
+}
+
+"entity.*" [mode == 'view'] {
+    enabled:false;
+}
+
+"entity.*" [mode != 'view'] {
+    enabled:true;
+}
+
+"searchMunicipality|selectedMunicipality" [mode == 'view'] {
+    viewonly:true;
+}
+
+"searchMunicipality|selectedMunicipality" [mode != 'view'] {
+    viewonly:false;
+}
+
+
+

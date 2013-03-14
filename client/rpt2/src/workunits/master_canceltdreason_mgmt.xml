@@ -1,0 +1,28 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/rpt" caption="Cancel TD Reasons" role="MASTER_ENCODER" permission="canceltdreason.view" target="window" index="3" />
+        <invoker type="quick_launcher" code="CTD00" caption="Cancel TD Reasons" role="MASTER_ENCODER" permission="canceltdreason.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class CancelTDReasonMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'CancelTDService'
+            String objectName = 'canceltdreason'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"cancelcode", caption:"Code", minWidth:40),
+                    new Column(name:"canceltitle", caption:"Title", minWidth:130),
+                    new Column(name:"canceldesc", caption:"Description", minWidth:170),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

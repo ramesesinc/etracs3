@@ -1,0 +1,82 @@
+import com.rameses.common.*
+import com.rameses.annotations.*
+import java.rmi.server.UID
+
+public class XPatchServiceV22001
+{
+	@PersistenceContext('main')
+	def em
+
+	@ProxyMethod
+	public List getLandPins(){
+		return em.sqlContext.createQuery("SELECT pin FROM pin WHERE rputype = 'land' AND rpid IS NULL").resultList
+	}
+	
+	@ProxyMethod
+	public void updateRealPropertyId( landpin ) {
+		println 'Processing PIN -> ' + landpin.pin 
+		def lands = getFaasListByPin( landpin.pin )
+		lands.each { land ->
+			def rpid = 'RP' + new UID()
+			doUpdateRealPropertyId( land, rpid )
+			getLandImprovementByPins( landpin.pin ).each{ 
+				rpid = 'RP' + new UID()
+				getImprovements(it.fullpin).each{ improvement ->
+					doUpdateRealPropertyId( improvement, rpid )
+				}
+			}
+		}
+	}
+	
+	def getFaasListByPin( pin){
+		return em.sqlContext.createQuery('''
+					SELECT f.objid, f.rp, fl.claimno, fl.fullpin,  fl.ry  
+						FROM faas  f 
+						INNER JOIN faaslist fl ON f.objid = fl.objid 
+						WHERE fl.fullpin = $P{pin} 
+				''')
+				.setParameter('pin', pin)
+				.resultList
+	}
+	
+	void doUpdateRealPropertyId( faas, rpid ){
+		faas.rp = em.serializer.read( faas.rp )
+		faas.rp.objid = rpid 
+		em.sqlContext.createExecutor('UPDATE faas SET rp = $P{rp} WHERE objid = $P{objid}')
+					.setParameter('rp', em.serializer.write(faas.rp))
+					.setParameter('objid', faas.objid)
+					.execute()
+		
+		em.sqlContext.createExecutor('''
+			UPDATE pin SET rpid = $P{rpid}
+			WHERE pin = $P{pin}
+			  AND claimno = $P{claimno}
+			  AND ry = $P{ry}
+		''')
+		.setParameter('rpid', rpid)
+		.setParameter('pin', faas.fullpin)
+		.setParameter('claimno', faas.claimno)
+		.setParameter('ry', faas.ry)
+		.execute() 
+	}
+	
+	def getLandImprovementByPins( pin ){
+		return em.sqlContext.createQuery('''
+					SELECT DISTINCT fullpin FROM faaslist WHERE pin = $P{pin} AND rputype <> 'land'
+				''')
+				.setParameter('pin', pin)
+				.resultList
+	}
+	
+	def getImprovements( fullpin ){
+		return em.sqlContext.createQuery('''
+					SELECT f.objid, f.rp, fl.claimno, fl.fullpin,  fl.ry  
+					FROM faas  f 
+					INNER JOIN faaslist fl ON f.objid = fl.objid 
+					WHERE fl.fullpin = $P{fullpin}
+					  AND fl.rputype <> 'land'
+				''')
+				.setParameter('fullpin', fullpin)
+				.resultList
+	}
+}

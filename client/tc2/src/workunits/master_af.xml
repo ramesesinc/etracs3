@@ -1,0 +1,71 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="AF01" action="create" caption="Accountable Form" role="MASTER_ENCODER" permission="af.create" target="window" />
+        <invoker type="af_create" action="create" caption="Accountable Form" target="window"/>
+        <invoker type="af_open" action="open" caption="Accountable Form" target="window"/>
+        
+        <invoker type="formActions" action="approve" caption="Approve" mnemonic="a" immediate="true" visibleWhen="#{entity.docstate == 'DRAFT' and mode=='read'}"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class AFController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+    String serviceName = 'AFService'
+    String objectName  = 'af'
+    String getCreateFocusComponent() { return 'entity.objid' }
+    String getEditFocusComponent() { return 'entity.description' }
+    
+    void approve(){
+        if( MsgBox.confirm('Approve record?') ){
+            entity = service.approve( entity )
+        }
+    }
+    
+    
+    def createObject() {
+        return [
+            docstate     : "DRAFT",
+            denomination : 0.0
+        ];
+    }
+    
+    def getTypeList() {
+        return ["serial", "nonserial"];
+    }
+    
+    def getUnitList() {
+        return ["pad", "stub"];
+    }
+    
+    void setAftype( aftype ){
+        entity.aftype = aftype;
+        
+        if( entity.aftype == "serial" ){
+            entity.unit = "stub";
+            entity.pcsperunit = 50;
+            entity.serieslength = 7;
+        }else{
+            entity.unit = "pad";
+            entity.pcsperunit = 1000;
+            entity.denomination = 0;
+        }
+    }
+    
+    def getAftype(){
+        return entity.aftype;
+    }
+    
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.tc.master.ui.AFPage"/>
+    </pages>
+</workunit>

@@ -1,0 +1,33 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import com.rameses.invoker.client.*
+
+class OutboundMessageTask
+{
+    @Service('DynamicHttpInvokerService')
+    def invokerSvc
+	
+	@Service('MessagingService')
+    def msgSvc
+    
+    @ProxyMethod
+	public def deliverMessage( task ) {
+        def messages = msgSvc.getOutboxMessages()
+		messages.each{ msg ->
+			try {
+				println 'Sending message to remote -> ' + msg.receiver.id 
+				def retval = invokerSvc.invokeRemoteService( 'RemoteInboxService', 'receive', [msg] as Object[])
+				if( retval.status == 'ok' ) {
+					msgSvc.deliveredSuccessfully( msg )
+				}
+				else {
+					msgSvc.errorProcessing( msg, retval.msg )
+				}
+			}
+			catch( e ) {
+				msgSvc.logMessage( msg, e.message )
+			}
+		}
+        return true
+	}
+}

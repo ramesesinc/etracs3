@@ -1,0 +1,32 @@
+<schema>
+    <element name="inbox" tablename="sys_inbox">
+        <link ref="info"/>
+    </element>
+	
+	<element name="outbox" tablename="sys_outbox">
+        <link ref="info"/>
+    </element>
+
+	<element name="info">
+		<field name="objid" primary="true"/>
+		<field name="schemaname" required="true" />
+		<!-- inbox : UNREAD, READ, ERROR -->
+		<!-- outbox: UNDELIVERED, DELIVERED, ERROR -->
+		<field name="docstate" required="true"/>
+		<field name="senderid" required="true"/>
+		<field name="receiverid" required="true"/>
+		<complex name="sender" ref="recipient" required="true" serializer="default" />
+		<complex name="receiver" ref="recipient"  required="true" serializer="default" />
+        <field name="subject" required="true" />
+		<field name="dtposted" required="true" />
+		<field name="type" required="true" />
+		<complex name="data" required="true" serializer="default" />
+		<field name="message"  />
+	</element>
+	
+	<element name="recipient">
+		<field name="id" required="true"/>
+		<field name="name" />
+		<field name="type" />
+	</element>
+</schema>

@@ -1,0 +1,32 @@
+<folders>
+    <folder id="explorer">
+        <folder id="txn" caption="Transactions" index="0">
+            <folder id="rpt" caption="Real Property">
+                <folder id="faas" caption="FAAS" />
+                <folder id="cert" caption="Certifications" />
+                <folder id="util" caption="Utilities" />
+            </folder>
+            <folder id="landtax" caption="Land Tax" />
+        </folder>
+        <folder id="master" caption="Master Management" index="1">
+            <folder id="rpt" caption="Real Property">
+                <folder id="grs" caption="General Revision Schedule" index="500"/>
+            </folder>
+        </folder>
+        <folder id="txnmgmt" caption="Transaction Management" index="2">
+            <folder id="rpt" caption="Real Property" />
+            <folder id="landtax" caption="Land Tax" />
+        </folder>
+        <folder id="report" caption="Reports" index="4">
+            <folder id="rpt" caption="Real Property"/>
+            <folder id="landtax" caption="Land Tax"/>
+        </folder>
+        <folder id="rulemgmt" caption="Rule Management" index="3">
+            <folder id="rpt" caption="Real Property" />
+        </folder>      
+        <folder id="setting" caption="Settings Management" index="5">
+            <folder id="rpt" caption="Real Property" />
+        </folder>
+    </folder>
+
+</folders>

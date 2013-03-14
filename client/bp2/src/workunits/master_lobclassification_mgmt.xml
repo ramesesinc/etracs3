@@ -1,0 +1,27 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/bplo" caption="LOB Classifications" role="MASTER_ENCODER" permission="lobclassification.view" target="window" index="1" />
+        <invoker type="quick_launcher" code="LOBC00" caption="LOB Classifications" role="MASTER_ENCODER" permission="lobclassification.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class LobClassificationMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'LobClassificationService'
+            String objectName = 'lobclassification'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"name", caption:"Classification"),
+                    new Column(name:"remarks", caption:"Remarks"),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

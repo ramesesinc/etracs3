@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    
+    <invokers>
+        <invoker type="quick_launcher" code="MACH01" action="create" caption="Machine" role="MASTER_ENCODER" permission="machine.create"/>
+        <invoker type="machine_create" action="create" caption="Machine" />
+        <invoker type="machine_open" action="open" caption="Machine" />
+    </invokers>
+        
+    <code lang="groovy">
+        <![CDATA[
+        
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import java.rmi.server.UID;
+        
+        public class MachineController  extends com.rameses.client.ui.common.SinglePageCRUD  
+        {
+            String serviceName = "MachinesService"
+            String objectName  = 'machine'
+            String getCreateFocusComponent() { return "entity.machinecode"; }
+            String getEditFocusComponent() { return "entity.machinecode"; }
+        }
+        
+        ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.master.ui.MachinePage" />
+    </pages>
+</workunit>
+

@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas" action="init" caption="Batch General Revision"  mnemonic="b" role="APPRAISER" permission="batchgr.create" index="1000"/>
+        <invoker type="quick_launcher" code="BGR01" action="init" caption="Batch General Revision"  mnemonic="b" role="APPRAISER" permission="batchgr.create"/>
+    </invokers>
+    <code lang="groovy">
+<![CDATA[
+
+import com.rameses.rcp.annotations.*
+import com.rameses.rcp.common.*
+import com.rameses.osiris2.client.*
+import com.rameses.rcp.framework.TaskManager;
+
+
+public class BatchGRController {
+    @Binding
+    def binding 
+    
+    @Service( 'GeneralRevisionService' )
+    def svc 
+    
+    @Service('LguService')
+    def lguSvc
+    
+    def msg 
+    def fetchidtask
+    def taskmgr
+    def tasklist
+    def newry
+    def processing 
+    def successcount = 0
+    def errorcount = 0
+    def faaslist 
+    def startdate
+    
+    def lgu 
+    def barangay 
+    def memoranda = 'REVISED PURSUANT TO R.A. 7160'
+    
+    
+    void init(){
+    }
+    
+    void doCancel() {
+        tasklist.each{ task -> 
+            task.setCancelled( true ) 
+            task.setEnded( true )
+            taskmgr.removeTask( task )
+            taskmgr.stop()
+        }
+        processing = false 
+        updateMessage('Transaction cancelled.')
+        binding.refresh('revise|doCancel|newry|lgu|barangay|memoranda')
+    }
+    
+    def updateMessage = { msg ->
+        this.msg = msg
+        binding.refresh('msg')
+    }
+    
+    def afterfetch = { list ->
+        faaslist = list
+        if( faaslist ) {
+            if( fetchidtask.cancelled ) {
+                taskmgr.stop()
+            }
+            else {
+                taskmgr.removeTask( fetchidtask )
+                doRevise() 
+            } 
+        }
+        else {
+            processing = false
+            binding.refresh('revise|doCancel|newry|lgu|barangay|memoranda')
+            updateMessage('There are no more records for processing.')
+        }
+    }
+    
+    def updateProcessedCount = { successcount, errorcount ->
+        synchronized(this) {
+            this.successcount += successcount 
+            this.errorcount += errorcount
+            updateMessage('Successfully Processed: ' + this.successcount )
+        }
+    }
+    
+    def onfinish = {
+        def runningtasks = tasklist.findAll{ it.isEnded() == false } 
+        if( runningtasks.size() == 0 ) {
+            processing = false;
+            updateMessage( 'Transaction completed. Successfully Processed: ' + this.successcount + '  Errors: ' + errorcount)
+            println 'TOTAL PROCESSING TIME :' + timeDiff( startdate, new Date()) 
+            binding.refresh('revise|doCancel|newry|lgu|barangay|memoranda')
+        }
+    }
+    
+    def timeDiff( d1, d2 ) {
+        def diff = d2.time - d1.time 
+        int secs = diff / 1000
+        int hours = secs / 60 / 60 
+        secs -= ( hours * 60 * 60 )
+        int mins = secs / 60
+        secs -= ( mins * 60 )
+        def msg = ''
+        if( hours > 0 ) msg += "$hours hour" + ( hours == 1 ? '' : 's')
+        if( mins > 0 ) msg += " $mins min" + ( mins == 1 ? '' : 's')
+        if( secs > 0 ) msg += " $secs sec" + ( secs == 1 ? '' : 's')
+        return msg 
+    }
+
+    void revise() {
+        processing  = false 
+        svc.validateBatchRY( newry, barangay?.objid )
+
+        if( MsgBox.confirm( 'Revise all FAAS?' ) ) {
+            startdate = new Date()
+            taskmgr = new TaskManager()
+            fetchidtask = new FetchIdListTask( svc:svc, newry:newry, barangay:barangay, afterfetch:afterfetch  )
+            taskmgr.addTask( fetchidtask )
+            taskmgr.start()
+            processing = true
+            updateMessage( 'Loading FAAS for revision. Please wait...' )
+            binding.refresh('revise|doCancel|newry')
+        }
+    }
+    
+    void doRevise() {
+        updateMessage('Creating general revision tasks...')
+        successcount = 0
+        errorcount = 0
+        tasklist = []
+        // def partitions = partitionBySection( faaslist )
+        // partitions.each{ list ->
+            def revisiontask = new RevisionTask( 
+                    taskname    : 'TASK ' + tasklist.size(),
+                    svc         : svc, 
+                    newry       : newry, 
+                    faaslist    : faaslist, 
+                    updateProcessedCount : updateProcessedCount, 
+                    onfinish             :onfinish 
+            )
+            taskmgr.addTask( revisiontask ) 
+            tasklist.add( revisiontask )
+            taskmgr.start()
+        // }
+    }
+    
+    
+    List getFaasIdsForRevision() {
+        def list = svc.getFaasIdForRevision( newry ) 
+        println 'FAAS Count -> ' + list.size() 
+        return list 
+    }
+    
+    List getRylist() {
+        return svc.getRyList( null ).ry
+    }
+    
+    def partitionBySection( list ) {
+        def resultList = []
+        def group = list.groupBy{ it.section }
+        group.each{ k,v -> resultList.add(v) }
+        return resultList 
+    }
+        
+    
+    def getBarangayList(){
+        return lguSvc.getBarangayListByParentId( lgu?.objid )
+    }   
+    
+    def getLguList() {
+        return lguSvc.getCityMunicipalityList()
+    }
+    
+
+}
+
+class FetchIdListTask extends com.rameses.rcp.common.Task {
+    def svc 
+    def newry 
+    def barangay 
+    
+    def ended = false
+    def cancelled = false 
+    
+    def afterfetch                //handler 
+    
+    public boolean accept() {
+       return !ended && !cancelled 
+    }
+    
+    public boolean isEnded() {
+        return ended || cancelled 
+    }
+
+    public void execute() {
+        def list = svc.getLandFaasIdForRevision( newry, barangay.objid ) 
+        println '='*50 
+        println 'No. of lands for processing -> ' + list.size()
+        if( ! cancelled ) {
+            afterfetch( list )
+        }
+        ended = true 
+    }
+    
+}
+
+
+class RevisionTask extends com.rameses.rcp.common.Task {
+    def taskname 
+    def svc 
+    def newry 
+    
+    def ended = false
+    def cancelled = false 
+    def faaslist 
+    def memoranda
+    
+    def updateProcessedCount   //handler
+    def onfinish                //handler 
+    
+    public boolean accept() {
+       return !ended && !cancelled 
+    }
+    
+    public boolean isEnded() {
+        return ended || cancelled 
+    }
+
+    public void execute() {
+        while( faaslist.size() > 0 && cancelled == false  ) {
+            def landfaas = faaslist[0]
+            println 'Processing Faas -> ' + landfaas.objid 
+            def retval = svc.reviseLandFaas( landfaas.objid, newry, memoranda )
+            faaslist.remove( landfaas )
+            updateProcessedCount( retval.success, retval.error )
+
+            try {
+                Thread.sleep( 20 )
+            }
+            catch( e ) {
+                //
+            }
+        }
+        ended = true 
+        if( ! cancelled ) {
+            onfinish()
+        }
+        println taskname + ' is done...' 
+    }
+}
+
+
+]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.faas.BatchGRInitPage" />
+    </pages>
+</workunit>

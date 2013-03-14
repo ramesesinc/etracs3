@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// author    : jzamora
+// copyright : Rameses Systems Inc
+-->
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txnmgmt/rpt" caption="Consolidations" mnemonic="c" role="APPRAISER" permission="consolidationmgt.view" index="120"/>
+        <invoker type="quick_launcher" code="CS00" caption="Consolidations" mnemonic="c" role="APPRAISER" permission="consolidationmgt.view" />
+        <invoker type="home.action" caption="Consolidations" mnemonic="c" role="APPRAISER" permission="consolidationmgt.view" index="4" icon="images/folder.png" target="window"  />
+        
+        <invoker type="formActions" action="create" shortcut="ctrl N" immediate="true" caption="New" mnemonic="n" icon="images/doc-new.png" role="APPRAISER" permission="consolidationmgt.create" />
+        <invoker type="formActions" action="open" shortcut="ctrl O" visibleWhen="#{selectedItem != null and selectedItem.objid != null}" immediate="true" caption="Open" mnemonic="o" icon="images/open.png" role="APPRAISER" permission='consolidationmgt.view' />
+    </invokers>
+    <code lang="groovy">
+<![CDATA[
+
+import com.rameses.rcp.annotations.*
+import com.rameses.rcp.common.*
+import com.rameses.osiris2.client.*
+
+public class ConsolidationMgmtController 
+{
+    @Binding 
+    def binding
+    
+    @Service('ConsolidationService')
+    def svc 
+    
+    String searchText
+    def selectedItem
+    List list
+    
+    def create() {
+        return InvokerUtil.lookupOpener('consolidation.create', [consolidation:selectedItem])
+    }
+    
+    def open() {
+        return InvokerUtil.lookupOpener('consolidation.open', [consolidation:selectedItem])
+    }
+    
+    
+    void search() {
+        list = null
+        listHandler.load()
+    }
+    
+    def listHandler =[
+        getRows    : { return 25 },
+        getColumns : { return [
+            new Column( name:'docstate', caption:'State', width:120 ),
+            new Column( name:'newtdno', caption:'New TD No.', width:150),
+            new Column( name:'newpin', caption:'New PIN', width:150 ),
+            new Column( name:'newtaxpayername', caption:'Taxpayer', width:300 ),
+            new Column( name:'areasqm', caption:'Area (sqm)', type:'decimal', format:'#,##0.00', width:110 ),
+            new Column( name:'areaha', caption:'Area (ha)', type:'decimal', format:'#,##0.000000', width:110 ),
+        ]},
+        fetchList  : {
+            if( ! list  ) {
+                list = svc.getList( searchText, it )
+            }
+            return list 
+        }
+    ] as PageListModel
+    
+
+}
+
+
+]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.txn.consolidation.ConsolidationMgmtPage"/>
+    </pages>
+</workunit>

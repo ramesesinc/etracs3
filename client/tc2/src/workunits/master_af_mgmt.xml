@@ -1,0 +1,29 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/treasury" caption="Accountable Forms" role="MASTER_ENCODER" permission="af.view" target="window" index="50" />
+        <invoker type="quick_launcher" code="AF00" caption="Accountable Forms" role="MASTER_ENCODER" permission="af.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class AFMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'AFService'
+            String objectName  = 'af'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"objid", caption:"AF No."),
+                    new Column(name:"description", caption:"Description"),
+                    new Column(name:"aftype", caption:"Type"),
+                    new Column(name:"docstate", caption:"State"),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

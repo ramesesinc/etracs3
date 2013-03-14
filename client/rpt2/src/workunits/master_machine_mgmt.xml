@@ -1,0 +1,27 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/rpt" caption="Machines" role="MASTER_ENCODER" permission="machine.view" target="window" index="7" />
+        <invoker type="quick_launcher" code="MACH00" caption="Machines" role="MASTER_ENCODER" permission="machine.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class MachineMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'MachinesService'
+            String objectName = 'machine'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"machinecode", caption:"Code", minWidth:40),
+                    new Column(name:"machinedesc", caption:"Description", minWidth:170),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

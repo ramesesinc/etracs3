@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit extends="workunits/faas.xml">
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas"          action="initTxn"    caption="Change Taxability" mnemonic="f" target="window" role="APPRAISER" permission="transfer.create"  index="6"/>
+        <invoker type="faas_open.CT" action="open" caption="FAAS (Open)" mnemonic="o" shortcut="ctrl O" target="window" icon="images/open.png" role="APPRAISER" permission="faas.open" />
+        <invoker type="faas_viewprevious.CT" action="openPrevious" caption="View Previous" target="popup" icon="images/doc-view.png" />
+        <invoker type="quick_launcher" code="CT01"         action="initTxn"    caption="Change Taxability" target="window" />
+        
+    </invokers>
+    
+<code lang="groovy">
+        
+import com.rameses.rcp.annotations.* 
+
+public class ChangeTaxabilityController extends etracs2.rpt.groovy.AbstractFAASController 
+{
+    @Service('FAASService')
+    def svc
+    
+    @Service('Var')
+    def var
+    
+    public def getSvc(){ return svc }
+    public def getVar(){ return var }
+    public def getTxnType(){ return 'CT' }
+    public def getTxnTitle(){ return 'Change Taxability' }
+    
+    public def initFaasForTransaction() {
+        return svc.initChangeTaxabilityTransaction( getCommonInitTxnParams() )
+    }
+    
+}
+
+</code>
+<pages></pages>
+</workunit>
+
+

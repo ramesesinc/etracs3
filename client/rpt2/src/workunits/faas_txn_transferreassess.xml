@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit extends="workunits/faas.xml">
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas"          action="initTxn"    caption="Transfer with Reassessment" mnemonic="f" target="window" role="APPRAISER" permission="transfer.create"  index="3"/>
+        <invoker type="faas_open.TRE" action="open" caption="FAAS (Open)" mnemonic="o" shortcut="ctrl O" target="window" icon="images/open.png" role="APPRAISER" permission="faas.open" />
+        <invoker type="faas_viewprevious.TRE" action="openPrevious" caption="View Previous" target="popup" icon="images/doc-view.png" />
+        <invoker type="quick_launcher" code="TR02"         action="initTxn"    caption="Transfer with Reassessment" target="window" />
+        
+    </invokers>
+    
+<code lang="groovy">
+        
+import com.rameses.rcp.annotations.* 
+
+public class TransferWithReassessmentController extends etracs2.rpt.groovy.AbstractFAASController 
+{
+    @Service('FAASService')
+    def svc
+    
+    @Service('Var')
+    def var
+    
+    public def getSvc(){ return svc }
+    public def getVar(){ return var }
+    public def getTxnType(){ return 'TRE' }
+    public def getTxnTitle(){ return 'Transfer With Reassessment' }
+    public boolean getAllowEditOwner() { return true }
+    
+    public def initFaasForTransaction() {
+        return svc.initTransferTransaction( getCommonInitTxnParams() )
+    }
+}
+
+</code>
+<pages></pages>
+</workunit>
+
+

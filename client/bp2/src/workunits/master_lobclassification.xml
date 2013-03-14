@@ -1,0 +1,28 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="LOBC01" action="create" caption="LOB Classifications" role="MASTER_ENCODER" permission="lobclassification.create"/>
+        <invoker type="lobclassification_create" action="create" caption="LOB Classification" />
+        <invoker type="lobclassification_open" action="open" caption="LOB Classification" />
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class LobClassificationController extends com.rameses.client.ui.common.SinglePageCRUD
+{
+    String serviceName = 'LobClassificationService'
+    String objectName  = 'lobclassification'
+    String getCreateFocusComponent() { return 'entity.name' }
+    String getEditFocusComponent() { return 'entity.name' }
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.bp.master.ui.LobClassificationPage"/>
+    </pages>
+</workunit>

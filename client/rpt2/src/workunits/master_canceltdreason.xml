@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    
+    <invokers>
+        <invoker type="quick_launcher" code="CTD01" action="create" caption="Cancel TD Reason" role="MASTER_ENCODER" permission="canceltdreason.create"/>
+        <invoker type="canceltdreason_create" action="create" caption="Cancel TD Reason" />
+        <invoker type="canceltdreason_open" action="open" caption="Cancel TD Reason" />
+    </invokers>
+    
+    <code lang="groovy">
+        <![CDATA[
+        
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import java.rmi.server.UID;
+        
+        public class CancelTDReasonsController  extends com.rameses.client.ui.common.SinglePageCRUD  
+        {
+            String serviceName = "CancelTDService"
+            String objectName  = 'canceltdreason'
+            String getCreateFocusComponent() { return "entity.cancelcode"; }
+            String getEditFocusComponent() { return "entity.cancelcode"; }
+        }
+        
+        
+        ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.master.ui.CancelTDReasonPage" />
+    </pages>
+</workunit>

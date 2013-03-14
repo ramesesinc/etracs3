@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit extends="workunits/faas.xml">
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas" action="initCapture"      caption="Data Capture"          mnemonic="c" target="window" role="APPRAISER" permission="datacapture.create" index="1" />
+        <invoker type="faas.create" action="initCapture" caption="New" mnemonic="n" shortcut="ctrl N" target="window" icon="images/doc-new.png" role="APPRAISER" permission="faas.create" />
+        <invoker type="faas_open.DC" action="open" caption="FAAS (Open)" mnemonic="o" shortcut="ctrl O" target="window" icon="images/open.png" role="APPRAISER" permission="faas.open" />
+        <invoker type="faas_viewprevious.DC" action="openPrevious" caption="View Previous" target="popup" icon="images/doc-view.png" />
+        <invoker type="quick_launcher" code="DC01"  action="initCapture"      caption="Data Capture"          target="window" />
+    </invokers>
+    
+<code lang="groovy">
+        
+import com.rameses.rcp.annotations.* 
+
+public class DataCaptureController extends etracs2.rpt.groovy.AbstractFAASController 
+{
+    @Service('FAASService')
+    def svc
+    
+    @Service('Var')
+    def var
+    
+    public def getSvc(){ return svc }
+    public def getVar(){ return var }
+    public def getTxnType(){ return 'DC' }
+    public def getTxnTitle(){ return 'Data Capture' }
+    public boolean getAllowEditOwner() { return true }
+    public def initFaasForTransaction() { return faas }
+}
+
+</code>
+<pages></pages>
+</workunit>
+
+

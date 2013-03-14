@@ -1,0 +1,28 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/treasury" caption="Collection Types" role="MASTER_ENCODER" permission="collectiontype.view" target="window" index="52" />
+        <invoker type="quick_launcher" code="COLT00" caption="Collection Types" role="MASTER_ENCODER" permission="collectiontype.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class CollectionTypeMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'CollectionTypeService'
+            String objectName  = 'collectiontype'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"name", caption:"Collection Type", width:200),
+                    new Column(name:"appcode", caption:"App Code", minWidth:140),
+                    new Column(name:"afid", caption:"AF No.", minWidth:30)
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

@@ -1,0 +1,146 @@
+import com.rameses.annotations.*;
+import com.rameses.eserver.*;
+import com.rameses.common.*;
+import java.rmi.server.UID;
+
+class RPTSettingService
+{
+	@PersistenceContext('main')
+	def em
+	
+	@Service('ETRACSUtilService')
+	def util
+	
+	@Service('LogService')
+	def logService
+	
+	@Service('DateService')
+	def dateSvc
+	
+	def schemaname = 'rptsetting:rptsetting';
+	def schemaversion = '1.0';
+	
+	def LANDTAX_SETTING_SCHEMA = 'landtaxsetting'
+	def LANDTAX_SETTING_OBJID = 'SETTINGID'
+	
+	@ProxyMethod
+	public def getList( searchText ) {
+		if( !searchText ) return em.sqlContext.createQuery('SELECT * FROM rptsetting').resultList;
+		
+		return [];
+	}
+	
+	@ProxyMethod
+	public def open(){
+		def o = em.sqlContext.createQuery( 'SELECT objid FROM rptsetting' ).singleResult;
+		if( o ) {
+			return em.read( schemaname, o );
+		}
+		return null;
+	}
+	
+	@ProxyMethod
+	public def create( rptsetting ){
+		rptsetting.objid = 'RPTSET' + new UID();
+		rptsetting.schemaname = schemaname;
+		rptsetting.schemaversion = schemaversion;
+		rptsetting.ry = Integer.parseInt( rptsetting.ry );
+		
+		validate( rptsetting );
+		em.create( rptsetting.schemaname, rptsetting );
+		
+		return rptsetting;
+	}
+	
+	@ProxyMethod
+	public def update( rptsetting ){
+		rptsetting.ry = Integer.parseInt( rptsetting.ry );
+		
+		validate( rptsetting );
+		em.update( rptsetting.schemaname, rptsetting );
+		
+		return rptsetting;
+	}
+	
+	
+	private void validate( rptsetting ){
+		def oldsetting = em.read(rptsetting.schemaname, rptsetting);
+		util.validateLastUpdate( rptsetting, oldsetting );	
+		
+		em.validate( rptsetting.schemaname, rptsetting );
+	}
+	
+	private def getListByQuery(namedQuery, values, params ) {
+		if( ! params ) params = [ _start:0, _limit:50 ]
+		return em.sqlContext.createNamedQuery( namedQuery ).setParameters(values)
+					.setFirstResult( params._start )
+					.setMaxResults( params._limit )
+					.resultList
+	}
+	
+	/*============================================================
+	*
+	*  RPT Due Dates
+	*
+	============================================================*/
+	@ProxyMethod
+	public def openLandTaxSetting() {
+		def setting = em.read(LANDTAX_SETTING_SCHEMA, [objid:LANDTAX_SETTING_OBJID])
+		if( ! setting )
+			setting = [objid:LANDTAX_SETTING_OBJID, duedates:[:]]
+		return setting 
+	}
+	
+	@ProxyMethod
+	public def saveLandTaxSetting( setting ) {
+		validateDueDateSetting( setting )
+		em.save(LANDTAX_SETTING_SCHEMA, setting)
+		return setting 
+	}
+	
+	void validateDueDateSetting( setting ) {
+		def duedates = setting.duedates 
+		checkRequiredDueDateEntry( 'Discount', 1, duedates.qtr1discduemonth, duedates.qtr1discdueday)
+		checkRequiredDueDateEntry( 'Discount', 2, duedates.qtr2discduemonth, duedates.qtr2discdueday)
+		checkRequiredDueDateEntry( 'Discount', 3, duedates.qtr3discduemonth, duedates.qtr3discdueday)
+		checkRequiredDueDateEntry( 'Discount', 4, duedates.qtr4discduemonth, duedates.qtr4discdueday)
+		checkDueDateValidity( 'Discount', 1, duedates.qtr1discduemonth, duedates.qtr1discdueday)
+		checkDueDateValidity( 'Discount', 2, duedates.qtr2discduemonth, duedates.qtr2discdueday)
+		checkDueDateValidity( 'Discount', 3, duedates.qtr3discduemonth, duedates.qtr3discdueday)
+		checkDueDateValidity( 'Discount', 4, duedates.qtr4discduemonth, duedates.qtr4discdueday)
+		
+		checkRequiredDueDateEntry( 'Interest', 1, duedates.qtr1intduemonth, duedates.qtr1intdueday)
+		checkRequiredDueDateEntry( 'Interest', 2, duedates.qtr2intduemonth, duedates.qtr2intdueday)
+		checkRequiredDueDateEntry( 'Interest', 3, duedates.qtr3intduemonth, duedates.qtr3intdueday)
+		checkRequiredDueDateEntry( 'Interest', 4, duedates.qtr4intduemonth, duedates.qtr4intdueday)
+		checkDueDateValidity( 'Interest', 1, duedates.qtr1intduemonth, duedates.qtr1intdueday)
+		checkDueDateValidity( 'Interest', 2, duedates.qtr2intduemonth, duedates.qtr2intdueday)
+		checkDueDateValidity( 'Interest', 3, duedates.qtr3intduemonth, duedates.qtr3intdueday)
+		checkDueDateValidity( 'Interest', 4, duedates.qtr4intduemonth, duedates.qtr4intdueday)
+	}	
+	
+	void checkDueDateValidity( type, qtr, duemonth, dueday){
+		if( ! duemonth  && ! dueday ) return 
+		def currdate = dateSvc.parseCurrentDate()
+	    def sdate = buildStringDate(currdate.year, duemonth, dueday)
+		println '='*50
+		println 'sdate -> ' + sdate 
+		def dt = dateSvc.parse('yyyy-MM-dd', sdate)
+		if( sdate != dateSvc.format('yyyy-MM-dd', dt))
+			throw new Exception( type + ' due date for Quarter ' + qtr + ' is invalid.')
+	}
+	
+	void checkRequiredDueDateEntry( type, qtr, duemonth, dueday){
+	    if( duemonth && ! dueday )
+			throw new Exception( type + ' due day for Quarter ' + qtr + ' is required.')
+		if( ! duemonth && dueday )
+			throw new Exception(type + ' month due for Quarter ' + qtr + ' is required.')
+	}
+	
+	def buildStringDate( year, duemonth, dueday) {
+		def sdate = year + '-'
+		sdate += ( duemonth > 9 ?  duemonth+''  : '0'+duemonth ) + '-'
+		sdate += ( dueday > 9 ?  dueday+''  : '0'+dueday ) 
+		return sdate 
+	}
+}

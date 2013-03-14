@@ -1,0 +1,10 @@
+<workunit>
+    <invokers>
+    </invokers>
+    <code>
+    </code>
+
+    <pages>
+        <page template="etracs2.common.ui.CRUDMgmtPage" />
+    </pages>
+</workunit>

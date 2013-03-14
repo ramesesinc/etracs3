@@ -1,0 +1,633 @@
+import com.rameses.common.*
+import com.rameses.annotations.*
+import java.rmi.server.UID
+
+class ReceiptService
+{
+	@PersistenceContext('main')
+	def em
+	
+	@Service('LogService')
+	def logService
+	
+	@Service('DateService')
+	def dateService
+	
+	@Service('ETRACSUserService')
+	def userSvc
+	
+	@Service('ETRACSUtilService')
+	def utilSvc
+		
+	@Service('Var')
+	def var 
+	
+	@Service('NumberService')
+	def numSvc 
+	
+	@Env
+	def env;
+	
+	def SCHEMANAME = 'receipt:receipt'
+	def SCHEMAVERSION = '1.0'
+	def RECEIPTITEM_SCHEMA = 'receipt:receiptitem'
+	def LIST_SCHEMA = 'receipt:receiptlist'
+	def PAYMENTITEM_SCHEMA = 'receipt:paymentitem'
+	def AFCONTROL_SCHEMA = 'afcontrol:afcontrol'
+	
+	def DELEGATED_STATE   = 'DELEGATED'
+	def OPEN_STATE   = 'OPEN'
+	def CLOSED_STATE = 'CLOSED' 
+	def CASH_PAYMENT = 'CASH'
+	
+	def SERIAL_TYPE = 'serial'
+	def TRUE = 1
+	
+	
+	@ProxyMethod
+	public def create( receipt ) {
+		try {
+			updateReceiptInfo( receipt )
+			checkDuplicateSerialNo( receipt.objid, receipt.info.afid, receipt.info.serialno )
+			validate( receipt )
+			buildDateBreakdownInfo( receipt )
+			em.create( LIST_SCHEMA, flatten( receipt ))
+			postReceiptItems( receipt )
+			postPayments( receipt )
+			postAFControl( receipt )
+			logService.log('CREATE',receipt.doctype, receipt.objid)
+			
+			return receipt 
+		}
+		catch(e) {
+			e.printStackTrace()
+			throw e
+		}
+	}
+	
+	@ProxyMethod
+	public void update( receipt )  {
+		checkRemitted( receipt )
+		updatePayorName( receipt ) 
+		validate( receipt )
+		buildDateBreakdownInfo( receipt )
+		em.update( LIST_SCHEMA, flatten(receipt ))
+		postReceiptItems( receipt )
+		postPayments( receipt )
+	}
+	
+	@ProxyMethod 
+	public def open( receiptid ) {
+		def receipt = em.sqlContext.createNamedQuery('receipt:getReceipt').setParameter('objid', receiptid).singleResult 
+		if( ! receipt ) throw new Exception('Cannot open Receipt with ID No. ' + receiptid )
+		
+		receipt.info = em.sqlContext.createNamedQuery('receipt:getReceiptInfo').setParameter('objid', receiptid).singleResult
+		//TODO:
+		//ugly hack : temporary to avoid error in the report
+		receipt.info.txndate = receipt.info.txndate.toString()
+		if( receipt.extended ) {
+			def extended = em.serializer.read(receipt.extended)
+			receipt.putAll(  extended )
+			receipt.info.putAll( extended)
+		}
+		receipt.items = em.sqlContext.createNamedQuery('receipt:getReceiptItems').setParameter('receiptid', receiptid).resultList
+		receipt.items.each{
+			if( it.extended ) it.putAll( em.serializer.read(it.extended) )
+			if( it.discount == null) it.discount = 0.0 
+		}
+		receipt.payments = em.sqlContext.createNamedQuery('receipt:getPaymentItems').setParameter('receiptid', receiptid).resultList
+		receipt.payments.each{
+			if( it.extended ) it.putAll( em.serializer.read(it.extended) )
+		}
+		return receipt
+	}
+	
+	@ProxyMethod
+	public def voidReceipt( receiptid, reason ) {
+		if( ! IsSerialType( receiptid) ) throw new Exception('Void transaction is not allowed for this receipt.')
+		if( IsClosedReceipt( receiptid ) ) throw new Exception('Receipt has already been remitted.')
+		if( IsReceiptVoided( receiptid ) ) throw new Exception('Void transaction is not allowed.\nReceipt has already been voided.')
+		
+		def params = [objid:receiptid, voidreason:reason]
+		// em.sqlContext.createNamedExecutor('receipt:voidReceipt').setParameters( params ).execute()
+		em.sqlContext.createNamedExecutor('receipt:voidReceiptList').setParameters( params ).execute()
+		logService.log('VOID', 'Receipt', receiptid)
+		return open( receiptid )
+	}
+	
+	@ProxyMethod
+	public void delete( receiptid, reason ) {
+		if( IsSerialType( receiptid) ) throw new Exception('Delete transaction is not allowed for this receipt.')
+		if( IsClosedReceipt( receiptid ) ) throw new Exception('Receipt has already been remitted.')
+		
+		def rct = open(receiptid)
+		
+		//revert afcontrol 
+		def afc = em.read(AFCONTROL_SCHEMA, [objid:rct.info.afcontrolid ])
+		afc.balance += rct.qtyissued 
+		afc.qtyissued -= rct.qtyissued
+		afc.docstate = 'APPROVED' 
+		em.update( afc.schemaname, afc, { diff ->
+				logService.logB('UPDATE', 'AFControl', afc.objid, null, diff)
+			} as UpdateChangeHandler
+		)
+		
+		def params = [objid:receiptid, receiptid:receiptid]
+		em.sqlContext.createNamedExecutor('receipt:deletePaymentItem').setParameters( params ).execute()
+		em.sqlContext.createNamedExecutor('receipt:deleteReceiptItem').setParameters( params ).execute()
+		em.sqlContext.createNamedExecutor('receipt:deleteReceiptList').setParameters( params ).execute()
+		em.sqlContext.createNamedExecutor('receipt:deleteReceipt').setParameters( params ).execute()
+		logService.logB('DELETE', 'Receipt', receiptid, 'Qty Issued: ' + rct.qtyissued, null)
+	}
+	
+	@ProxyMethod 
+	public List getList( searchParam, params ) {
+		if( !searchParam.docstate ) searchParam.docstate = '%'
+		if( !searchParam.collectorid ) searchParam.collectorid = '%'
+		if( !searchParam.capturedbyid ) searchParam.capturedbyid = '%'
+		if( searchParam.collectorid != '%' ) searchParam.capturedbyid = '%'
+		
+		if( ! searchParam.searchText ) return getListByQuery('receipt:getList', searchParam, params, 'objid')
+		
+		searchParam.serialno    = searchParam.searchText
+		searchParam.stubno      = searchParam.searchText
+		searchParam.txndate     = searchParam.searchText
+		searchParam.payorname   = searchParam.searchText+'%'
+		searchParam.paidby      = searchParam.searchText+'%'
+		
+		def result = []
+		if((result = getListByQuery('receipt:getListBySerialNo', searchParam, params, 'objid'))) return result 
+		if((result = getListByQuery('receipt:getListByStubNo', searchParam, params, 'objid'))) return result 
+		
+		if( searchParam.txndate.matches(/\d{4}-\d{2}-\d{2}/)) {
+			if((result = getListByQuery('receipt:getListByTxnDate', searchParam, params, 'objid'))) 
+				return result 
+		}
+		if((result = getListByQuery('receipt:getListByPayor', searchParam, params, 'objid'))) return result 
+		if((result = getListByQuery('receipt:getListByPaidBy', searchParam, params, 'objid'))) return result 
+		return result 
+	}
+    
+	@ProxyMethod
+	public List getSubcollectorOpenIssuances( subcollectorid ) {
+		return em.sqlContext.createNamedQuery('receipt:getSubcollectorOpenIssuances')
+							.setParameter('subcollectorid', subcollectorid)
+							.resultList
+	}
+	
+	@ProxyMethod
+	public List getUnremittedReceipts( collectorid ) {
+		return em.sqlContext.createNamedQuery('receipt:getUnremittedReceipts')
+							.setParameter('collectorid', collectorid)
+							.resultList
+	}
+	
+	@ProxyMethod
+	public List getUnremittedReceiptList( collectorid, search, params ) {
+		search = (search ? search + '%' : '%' )
+		params += [collectorid:collectorid, search:search ]
+		
+		def filters = [
+			[' AND o.serialno LIKE $P{search}'],
+			[' AND o.payorname LIKE $P{search}'],
+		]
+		return utilSvc.getListFromQuery('receipt:getUnremittedReceiptList', filters, params, 'o.objid')
+	}
+	
+    @ProxyMethod
+    public void validateCheckDate( checkdate ) {
+        def currdate = dateService.serverDate 
+        checkdate = dateService.parse( 'yyyy-MM-dd',checkdate)
+        if( checkdate > currdate ) throw new Exception('Post dated check is not allowed.')
+        def daysdiff = dateService.getDaysDiff( checkdate, currdate ) 
+        if( daysdiff > 180 ) throw new Exception('Stale check is not allowed.')
+    }
+	
+	@ProxyMethod  
+	public void createImportedReceipt( data ) {
+		data.receiptlists.each { receipt ->
+			em.create(LIST_SCHEMA, receipt )
+		}
+		data.receiptitems.each{ em.create(RECEIPTITEM_SCHEMA, it ) }
+		data.paymentitems.each{ em.create(PAYMENTITEM_SCHEMA, it ) }
+	} 
+	
+	@ProxyMethod
+	public def saveBookletCollection( entity ) {
+		
+		if( entity.amttendered < entity.amount ) throw new Exception('Amount Tendered must be greater than or equal to amount.')
+		def collector = userSvc.getUser( entity.collectorid )
+		if( !collector ) throw new Exception('Cannot open collector information with userid ' + entity.collectorid + '.' )
+		
+		def fund = em.sqlContext.createNamedQuery('receipt:getFundName').setParameter('objid', entity.fundid).singleResult
+		if( ! fund ) throw new Exception('Cannot open fund information with key ' + entity.fundid + '.' )
+		
+		entity.collector 	= collector 
+		entity.fundname 	= fund.fundname 
+		
+		entity.afcontrol.startseries.upto( entity.afcontrol.endseries ) { currentseries ->
+			def receipt = [
+				objid 			: 'BR' + new UID(),
+				schemaname		: SCHEMANAME,
+				schemaversion	: SCHEMAVERSION,
+				docstate		: OPEN_STATE,
+				doctype			: entity.doctype,
+				opener			: entity.opener,
+				collectorid		: entity.collectorid,
+				voided			: 0,
+				info			: buildBookletCollectionInfo( entity, currentseries ),
+				items			: buildBookletCollectionItem( entity ),
+				payments		: buildBookletCollectionPayments( entity ),
+			]
+			create( receipt )
+		}
+		return entity 
+	}
+	
+	def buildBookletCollectionInfo( entity, currentseries ){
+		def afcontrol = entity.afcontrol 
+		def info = [
+			mode		: 'ONLINE',
+			txndate		: dateService.serverDate,
+			dtposted	: dateService.serverDate, 
+			afid		: entity.af.objid ,
+			afcontrolid	: entity.afcontrol.objid, 
+			series		: currentseries,
+			serialno	: formatSeries( currentseries, afcontrol.prefix, afcontrol.suffix, afcontrol.serieslength),
+			stubno		: afcontrol.stubno,
+			collectiontypeid 	: entity.collectiontype.objid,
+			collectiontype	 	: entity.collectiontype.name,
+			payorrequired    	: false,
+			payorid			 	: null,
+			payorname		 	: entity.paidby,
+			payoraddress	  	: entity.paidbyaddress,
+			paidby				: entity.paidby,
+			paidbyaddress		: entity.paidbyaddress,
+			collectorid			: entity.collectorid,
+			collectorname		: entity.collector.formalname,
+			collectortitle 		: entity.collector.jobtitle,
+			totalpayment		: entity.unitvalue,
+			cash				: entity.unitvalue,
+			otherpayment		: 0.0,
+			amount				: entity.unitvalue,
+		]
+		
+		if( entity.af.objid == '52' ) {
+			info.putAll([
+				purchasedby		: '-',
+				citymuni		: var.lgu_name,
+				province		: var.parent_lgu_name,
+				price			: 0.0,
+				sex				: '-',
+				age				: 0,
+				certificateno	: '-',
+				issuedcitymuni	: var.lgu_name,
+				attestedby		: '-',
+				issuedate		: dateService.serverDate,
+				issuedprovince	: var.parent_lgu_name,
+				treasurer		: var.treasurer_name,
+			])
+		}
+		else {
+			info.putAll([
+				ownerof		: '-',
+				sex			: '-',
+				age			: 0,
+			])
+		}
+		return info 
+	}
+	
+	def buildBookletCollectionItem( entity ) {
+		return [[
+			objid 		: 'BRI' + new UID(),
+			acctid		: entity.acctid,
+			accttitle	: entity.accttitle,
+			fundid		: entity.fundid, 
+			fundname	: entity.fundname ,
+			amount		: entity.unitvalue,
+		]]
+	}
+	
+	List buildBookletCollectionPayments( entity ) {
+		def payment = [
+			paytype 	: 'CASH',
+			amount		: entity.unitvalue,
+			particulars	: 'CASH',
+		]
+		return [ payment ]
+	}
+	
+	def formatSeries( series, prefix, suffix, serieslength ) {
+		def p = (prefix ? prefix + '-' : '')
+		def s  = (suffix ? '-' + suffix : '')
+		return p + (series+'').padLeft(serieslength, '0') + s  
+	}
+	
+	
+	/*=========================================================================
+	** HELPER METHODS
+	=========================================================================*/
+
+	String getReceiptState( receiptid ) {
+		def data = em.sqlContext.createNamedQuery('receipt:getState').setParameter('objid', receiptid).singleResult
+		if( ! data ) throw new Exception('Receipt not found.')
+		return data.docstate 
+	}
+	
+	void validate( receipt ) {
+		if( receipt.info.amount <= 0.0 ) {
+			throw new Exception('Amount Due must be greater than zero.')
+		}
+		
+		if( receipt.info.amount != numSvc.round(receipt.items.amount.sum()) ) {
+			def receiptinfo = (receipt.info.serialno ? receipt.info.serialno : receipt.objid  )
+			throw new Exception('A data problem is encountered during validation of Receipt No. ' + receiptinfo + '.\nThe Receipt Amount is not equal to item amount total.\nClose the form and recreate the transaction to correct the problem.')
+		}
+		if( receipt.info.totalpayment < receipt.info.amount ) {
+			throw new Exception('Total Payment must be greater than or equal to amount due.')
+		}
+		if( receipt.info.otherpayment > receipt.info.amount ) {
+			throw new Exception('Non-Cash Payment must be less than or equal to amount due.')
+		}
+		if( receipt.info.otherpayment <= 0.0 && receipt.info.cash <= 0.0 ) {
+			throw new Exception('At least a Cash or Non-Cash Payment must be specified.')
+		}
+		if( receipt.info.change < 0.0 ) {
+			throw new Exception('Change must not be negative.\nNormally this happens if check payment is more than receipt amount.')
+		}
+		
+        def txndate = dateService.parse('yyyy-MM-dd', receipt.info.txndate )
+        if( receipt.info.mode != 'ONLINE' && txndate > dateService.serverDate ) {
+            throw new Exception('Txn Date must be before or equal to current date.')
+        }
+        
+        em.validate( receipt.schemaname, receipt )
+	}
+	
+	void checkRemitted( receipt ) {
+		def rct = em.sqlContext.createNamedQuery('receipt:getState').setParameter('objid', receipt.objid).singleResult
+		if( rct.state == CLOSED_STATE) throw new Exception('Document has already been remitted.')
+	}
+		
+	void updateReceiptInfo( receipt ) {
+		// receipt.objid = 'RCT' + (new UID())
+		receipt.schemaname = SCHEMANAME
+		receipt.schemaversion = SCHEMAVERSION
+		
+		def info = receipt.info 
+		Date currDate = new Date()
+		info.dtposted = currDate
+		if( receipt.info.mode == 'ONLINE' ) 
+			info.txndate = dateService.format( 'yyyy-MM-dd', currDate )
+		else if( ! info.txndate && receipt.info.mode != 'ONLINE' )
+			throw new Exception('Txn Date is required.')
+
+		updatePayorName( receipt )
+		updateCapturedByInfo( receipt )
+	}
+	
+	void updateCapturedByInfo( receipt ) {
+		if( receipt.info.mode == 'CAPTURE' ) {
+			receipt.capturedbyid = env.USERID
+			receipt.info.capturedbyid = env.USERID
+			receipt.info.capturedbyname = env.USERNAME
+			receipt.info.capturedbytitle = env.JOBTITLE 
+		}
+	}
+	
+	void updatePayorName( receipt ) {
+		def info = receipt.info
+		if( ! info.payorname ) {
+			info.payorid = null
+			info.payorname = info.paidby
+			info.payoraddress = info.paidbyaddress
+		}
+	}
+	
+	void buildDateBreakdownInfo( receipt ) {
+		def txndate = receipt.info.txndate
+		if( txndate instanceof String) txndate = java.sql.Date.valueOf( txndate )
+		def dt = dateService.parseDate( txndate, null )
+		receipt.iyear  = dt.year
+		receipt.iqtr   = dt.qtr
+		receipt.imonth = dt.month
+		receipt.iday   = dt.day
+	}
+	
+	void checkDuplicateSerialNo( objid, afid, serialno ) {
+		if( ! serialno ) return;
+		def rct = em.sqlContext.createNamedQuery('receipt:checkDuplicateSerialNo').setParameters([serialno:serialno, afid:afid]).singleResult
+		if( rct && rct.objid != objid ) throw new Exception("Duplicate Serial No. $serialno found.")
+	}
+	
+	boolean IsClosedReceipt( receiptid ) {
+		def state = getReceiptState( receiptid )
+		if( ! state ) throw new Exception('Receipt not found.')
+		return state == CLOSED_STATE 
+	}
+	
+	boolean IsSerialType( receiptid ) {
+		def data = em.sqlContext.createNamedQuery('receipt:getSerialNo').setParameter('objid', receiptid).singleResult
+		if( data.serialno ) 
+			return true
+		return false
+	}
+	
+	boolean IsReceiptVoided( receiptid ) {
+		def data = em.sqlContext.createNamedQuery('receipt:getVoidedStatus').setParameter('objid', receiptid ).singleResult 
+		if( data ) 
+			return data.voided == TRUE
+		return false 
+	}
+	
+	
+	void postReceiptItems( receipt ) {
+		em.sqlContext.createNamedExecutor('receipt:deleteReceiptItem').setParameter('receiptid', receipt.objid ).execute()
+		receipt.items.each { item ->
+            if( ! item.objid ) {
+                item.objid = 'RI' + new UID()
+            }
+			item.receiptid = receipt.objid
+			em.validate(RECEIPTITEM_SCHEMA, item)
+			em.create( RECEIPTITEM_SCHEMA, item)
+		}
+	}
+	
+	void postPayments( receipt ) {
+		em.sqlContext.createNamedExecutor('receipt:deletePaymentItem').setParameter('receiptid', receipt.objid ).execute()
+		receipt.payments.each { pmt ->
+			pmt.objid = 'P' + new UID()
+			pmt.receiptid = receipt.objid
+			em.validate(PAYMENTITEM_SCHEMA, pmt)
+			em.create( PAYMENTITEM_SCHEMA, pmt )
+		}
+	}
+	
+	void postAFControl( receipt ) {
+		def afcontrol = em.read( AFCONTROL_SCHEMA, [objid: receipt.info.afcontrolid ] )
+		if( afcontrol.aftype == SERIAL_TYPE ) 
+			postSerialAFControl( receipt, afcontrol )
+		else 
+			postNonSerialAFControl( receipt, afcontrol )
+	}
+	
+	void postSerialAFControl( receipt, afcontrol ) {
+		if( receipt.info.series != afcontrol.currentseries ) {
+			throw new Exception('Receipt series is invalid.\nReceipt series is not equal to current control series.\nPlease verify that no one is using your accountable form.')
+		}
+		if( afcontrol.beginseries == 0 ) {
+			//received since
+			afcontrol.beginseries = afcontrol.startseries 
+			afcontrol.beginqty = afcontrol.qtyreceived 
+			afcontrol.qtyonhand = afcontrol.qtyreceived
+			afcontrol.qtyissued = 1
+			afcontrol.issuedfrom = afcontrol.currentseries
+			afcontrol.issuedto = afcontrol.currentseries
+			afcontrol.balance = afcontrol.qtyreceived - 1
+		}
+		else if( afcontrol.qtyissued == 0 ){
+			//first issuance after remittance
+			
+			//some migrated values from version 1 are null
+			if( afcontrol.qtyissued == null ) {
+				afcontrol.qtyissued = 0 
+			}
+			
+			afcontrol.qtyissued += 1
+			afcontrol.balance -= 1
+			afcontrol.issuedfrom = afcontrol.beginseries
+			afcontrol.issuedto = afcontrol.beginseries
+		}
+		else {
+			//succeeding issuances
+			if( afcontrol.qtyissued ) //some migrated values from version 1 are null
+				afcontrol.qtyissued += 1
+			
+			afcontrol.balance -= 1
+			afcontrol.issuedto = afcontrol.currentseries
+		}
+		
+		if( afcontrol.balance == 0 ) afcontrol.active = false 
+		afcontrol.currentseries = getNextCurrentSeries( afcontrol );
+		
+		em.update(AFCONTROL_SCHEMA, afcontrol )
+	}
+	
+	def getNextCurrentSeries( afcontrol ){
+		afcontrol.currentseries = afcontrol.currentseries + 1;
+		if( afcontrol.cancelledseries instanceof String )
+			afcontrol.cancelledseries = em.serializer.read( afcontrol.cancelledseries )
+		if( afcontrol.cancelledseries && afcontrol.cancelledseries.size() > 0 ){
+			afcontrol.currentseries = getNextAvailableSeries( afcontrol.cancelledseries, afcontrol.currentseries );
+		}
+		return afcontrol.currentseries;
+	}
+	
+	def getNextAvailableSeries( def cancelledseries, def series ){
+		while( cancelledseries.find{ it.series == series } ){
+			return series += 1;
+		}
+		return series;
+	}
+	
+	void postNonSerialAFControl( receipt, afcontrol) {
+		if( afcontrol.beginqty == 0 ) {
+			//received since
+			afcontrol.beginqty = afcontrol.qtyreceived 
+			afcontrol.qtyissued = receipt.qtyissued 
+			afcontrol.balance = afcontrol.qtyreceived - receipt.qtyissued
+		}
+		else {
+			afcontrol.qtyissued += receipt.qtyissued 
+			afcontrol.balance -= receipt.qtyissued
+		}
+		if( afcontrol.balance == 0 ) afcontrol.active = false 
+		em.update(AFCONTROL_SCHEMA, afcontrol)
+	}	
+	
+	List getListByQuery( namedQuery, criteria, params, pagingKeys ) {
+		if( ! params  ) params = [ _start:0, _limit:25 ]
+		return em.sqlContext.createNamedQuery( namedQuery )
+					.setParameters(criteria)
+					.setFirstResult( params._start )
+					.setMaxResults( params._limit )
+					.resultList
+	}
+	
+	def flatten( receipt ) {
+		def rct = [:]
+		receipt.each{k,v ->
+			if( ! (v instanceof List || v instanceof Map) ) {
+				rct[k] = v 
+			}
+			else if( k != 'info' )  {
+				rct[k] = v 
+			}
+		}
+		rct.putAll( receipt.info )
+		return rct 
+	}
+	
+	@ProxyMethod 
+	public def getIssuedTotal( def searchParam ){ 
+		def params = [ _start:0, _limit:0 ] 
+		if( !searchParam.collectorid ) searchParam.collectorid = '%'
+		if( !searchParam.capturedbyid ) searchParam.capturedbyid = '%'
+		if( searchParam.collectorid != '%' ) searchParam.capturedbyid = '%'
+		def data = em.sqlContext.createNamedQuery("receipt:getIssuedTotal").setParameters( searchParam).singleResult
+		if( data ) 
+			return data.amount
+		return 0.0
+	}
+	
+	@ProxyMethod
+	public def getTotalSubcollectorIssuances( subcollectorid ) {
+		return em.sqlContext.createNamedQuery('receipt:getTotalSubcollectorIssuances')
+						.setParameter('subcollectorid', subcollectorid)
+						.singleResult
+						.total
+	}
+	
+	@ProxyMethod 
+	public def getTotalUnremittedReceipts( collectorid){ 
+		def data = em.sqlContext.createNamedQuery("receipt:getTotalUnremittedReceipts").setParameter('collectorid', collectorid).singleResult
+		if( data ) 
+			return data.amount
+		return 0.0
+	}
+	
+	@ProxyMethod 
+	public def getUnremittedAfIdReceipts( collectorid ) {
+		return em.sqlContext.createNamedQuery('receipt:getUnremittedAfIdReceipts').setParameter('collectorid', collectorid).resultList;
+	}
+	
+	
+	@ProxyMethod 
+	public def getUnremittedCollectionSummary( map ) {
+		def data = [:]
+		if( map.type == 'byseries') 
+			data = em.sqlContext.createNamedQuery('receipt:getUnremittedCollectionBySeries').setParameters( map ).singleResult;
+		else if( map.type == 'bytaxpayer')
+			data = em.sqlContext.createNamedQuery('receipt:getUnremittedCollectionByTaxpayer').setParameters( map ).singleResult;
+		else 
+			throw new Exception("Type '${map.type}' not yet supported " )
+		
+		
+		if( ! data.totalamount) data.totalamount = 0.00
+		if( ! data.cash) data.cash = 0.00
+		if( ! data.otherpayment) data.otherpayment = 0.00
+		map.putAll(  data );
+		return map;
+	} 
+	
+	@ProxyMethod
+	public def allowGeneralCollectionDiscount() {
+		return utilSvc.toBoolean(var.allow_general_collection_discount, false )
+	}
+	
+	@ProxyMethod
+	public def getDiscountTypes() {
+		return em.sqlContext.createNamedQuery('receipt:getDiscountTypes').resultList
+	}
+}

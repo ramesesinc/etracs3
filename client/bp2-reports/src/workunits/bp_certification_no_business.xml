@@ -1,0 +1,103 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txn/bplo/cert" action="init" caption="No Business Certification" role="LICENSING" permission="generateNoBusinessCertification" index="6" />
+        <invoker type="quick_launcher" code="BPC01" action="init" caption="No Business Certification" role="LICENSING" permission="generateNoBusinessCertification" index="6" />
+        
+        <invoker type="formActions"     action="_close" caption="Back" mnemonic="b" shortcut="ctrl + B" icon="images/back.png" immediate="true"/>
+        <invoker type="formActions"     action="init" caption="New" mnemonic="n" shortcut="ctrl + N" icon="images/doc-new.png" visibleWhen="#{mode!='create'}"/>
+        <invoker type="formActions"     action="print" caption="Print" mnemonic="p" shortcut="ctrl + P" icon="images/doc-view.png"/>
+        <invoker type="formActions"     action="preview" caption="Preview" mnemonic="v"             icon="images/doc-view.png"/>
+        
+        <invoker type="previewActions"  action="back" caption="Back" icon="images/back.png" immediate="true" />
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+import com.rameses.osiris2.reports.*;
+import java.rmi.server.UID
+
+class NoBusinessCertificationController
+{
+    @Binding
+    def binding
+    
+    @Service("ReportParameterService")
+    def svcParams;
+    
+    @Service('BPReportService') 
+    def svc 
+    
+    @Service('Var') 
+    def var
+    
+    def taxpayer 
+    def entity 
+    def mode = 'create' 
+
+    void init() {
+        entity = [
+            objid           : 'BC' + new UID(),
+            createdbyid     : OsirisContext.env.USERID,
+            createdby       : OsirisContext.env.USERNAME,
+            createdbytitle  : OsirisContext.env.JOBTITLE,
+            certifiedby     : var.treasurer_name,
+            certifiedbytitle: var.treasurer_title,
+            oramount        : 0.0
+        ]
+        taxpayer = null
+        mode = 'create' 
+        binding?.focus('taxpayer')
+    }
+
+    
+    def onselect = { taxpayer ->
+        svc.checkEntityOwnsBusiness( taxpayer )
+        entity.requestedbyid    = taxpayer?.objid
+        entity.requestedby      = taxpayer?.entityname
+        entity.requestedbyaddress = taxpayer?.entityaddress 
+    }
+    
+    def getLookupTaxpayer(){
+        return InvokerUtil.lookupOpener('entity.lookup', [onselect:onselect])
+    }
+    
+    def preview() {
+        generateReport()
+        return 'preview' 
+    }
+    
+    void generateReport() {
+        if( mode == 'create') {
+            entity = svc.createNoBusinessCertificate( entity )
+        }
+        report.viewReport()
+        mode = 'view' 
+    }
+    
+    void print(){
+        generateReport()
+        ReportUtil.print( report.report, true )
+    }
+    
+    def report = [
+        getReportName : { 'etracs2/bp/report/nobusinesscertification/nobusinesscertification.jasper' },
+        getReportData : { return entity },
+        getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ) },
+    ] as ReportModel;
+        
+    def back() {
+        return 'default' 
+    }
+    
+}
+]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.tc.report.ui.BPReportNoBusinessInitPage" />
+        <page name="preview" template="etracs2.common.PreviewPage" />
+    </pages>
+</workunit>

@@ -1,0 +1,332 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txn/treasury/af" action="init" caption="IRAF" role="AFO" permission="iraf.viewlist" target="window" index="10"/>
+        <invoker type="quick_launcher" code="IRAF01" action="init" caption="IRAF" role="AFO" permission="iraf.viewlist" target="window"/>
+        
+        <invoker type="formActions" action="create" shortcut="ctrl N" visibleWhen="#{mode == 'view'}" immediate="true" caption="New" mnemonic="n" icon="images/doc-new.png" role="AFO" permission="iraf.create"/>
+        <invoker type="formActions" action="edit" visibleWhen="#{mode == 'view' and entity.objid != null and entity.docstate == 'DRAFT'}" immediate="true" caption="Edit" mnemonic="e" icon="images/edit.png" role="AFO" permission="iraf.edit"/>
+        <invoker type="formActions" action="save" shortcut="ctrl S" visibleWhen="#{mode != 'view' and entity.docstate == 'DRAFT'}" caption="Save" mnemonic="s" icon="images/save.png"/>
+        <invoker type="formActions" action="cancel" visibleWhen="#{mode != 'view' and entity.docstate == 'DRAFT' }"  immediate="true" caption="Cancel" mnemonic="c" icon="images/doc-cancel.png"/>
+        <invoker type="formActions" action="delete" visibleWhen="#{mode == 'view' and entity.objid != null and entity.docstate == 'DRAFT'}" immediate="true" caption="Delete" mnemonic="d" icon="images/doc-delete.png" role="AFO" permission="iraf.delete"/>
+        <invoker type="formActions" action="approve" visibleWhen="#{mode == 'view' and entity.objid != null and entity.docstate == 'DRAFT'}" immediate="true" caption="Approve" mnemonic="a" icon="images/doc-approve.png" role="AFO" permission="iraf.approve"/>
+        
+        <invoker type="formActions"     action="viewRIV" shortcut="ctrl V" visibleWhen="#{selectedItem != null and mode != 'create' and selectedItem.docstate != 'DRAFT' and entity.txnno != null}" immediate="true" caption="View RIV" mnemonic="v" index="4" icon="images/doc-view.png" />
+        <invoker type="formActions"     action="viewRIS" shortcut="ctrl I" visibleWhen="#{selectedItem != null and mode != 'create' and selectedItem.docstate != 'DRAFT' and entity.txnno != null}" immediate="true" caption="View RIS" mnemonic="i" index="5" icon="images/doc-view.png" />
+        <invoker type="previewActions"  action="_default" shortcut="ctrl B" caption="Back" mnemonic="b" index="4" icon="images/back.png" />
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+import com.rameses.osiris2.reports.*;
+import java.rmi.server.UID;
+
+class IRAFController
+{
+    @ChangeLog(prefix=["entity"])
+    def changeLog;
+    
+    @Binding
+    def binding;
+    
+    @Service("IRAFService")
+    def svc;
+    
+    @Service("ReportParameterService")
+    def svcParams;
+    
+    def selectedItem;
+    def mode = "view" ;
+    def entity = [:];
+    def searchText;
+    def riv 
+    
+    public void init(){
+        create();
+        mode = "view";
+    }
+    
+    public void search(){
+        listHandler.load();
+        binding.refresh("selectedItem");
+    }
+    
+    def listHandler = [
+        getRows    : { return 25; },
+        getColumns : {
+            return [
+                new Column(name:"txnno", caption:"IRAF No.", minWidth:90),
+                new Column(name:"docstate", caption:"State", minWidth:50),
+                new Column(name:"rivrequestedby", caption:"Requested By", width:200)
+            ];
+        },
+        fetchList : { 
+            return svc.getList( searchText, it );
+        }
+    ] as PageListModel;
+    
+    def receivedHandler = [
+        getRows    : { return 10; },
+        onRemoveItem : { item -> 
+            if( mode == "view" ) return false;
+            if( MsgBox.confirm("Remove selected item?") ) {
+                def ri = entity.requesteditems.find{ it.afid == item.afid };
+                ri.qtyreceived -= item.qtyreceived;
+                entity.rcvitems.remove( item );
+                binding.refresh();
+            }
+        },
+        
+        getColumns : {
+            return [
+                new Column(name:"afid", name:"afid", caption:"AF No."),
+                new Column(name:"stuborqty", caption:"Stub No./Qty Received"),
+                new Column(name:"prefix", caption:"Preffix"),
+                new Column(name:"startseries", caption:"Start Series", format:"#"),
+                new Column(name:"endseries", caption:"End Series", format:"#", type:"integer"),
+                new Column(name:"suffix", caption:"Suffix")
+            ];
+        },
+        
+        fetchList : {
+            return entity.rcvitems.each{
+                it.stuborqty = ( entity.info.rivtype == 'LGU' ) ? it.qtyreceived : it.stubno;
+            };
+        }
+        
+    ] as SubListModel;
+    
+    def receivedItem;
+    def requestedHandler = [
+        getRows    : { return 10; },
+        getColumns : {
+            return [
+                new Column(name:"afid", caption:"AF No.", minWidth:60),
+                new Column(name:"qtyrequested", caption:"Qty. Requested"),
+                new Column(name:"qtydelivered", caption:"Qty. Delivered"),
+                new Column(name:"qtyreceived", caption:"Qty. Received")
+            ];
+        },
+        fetchList    : { return entity.requesteditems; }
+    ] as SubListModel;
+    
+    public void create(){
+        entity = [
+            docstate: "DRAFT",
+            info: [:],
+            rcvitems: []
+        ];
+        riv = null
+        mode = "create";
+    }
+    
+    void setRiv( riv ){
+        this.riv = riv 
+        if( riv ){
+            def txnno = this.entity.txnno;
+            this.entity = svc.create( riv.objid );
+            
+            if( !this.entity.txnno ){
+                this.entity.txnno = txnno;
+            }
+            
+            this.entity.info.txnno = this.entity.info.txnno;
+            this.entity.preparedby = (env.USERNAME) ? env.USERNAME : 'SYSTEM';
+            this.entity.preparedbytitle = (env.JOBTITLE) ? env.JOBTITLE : 'SYSTEM';
+            
+            this.entity.info.preparedby = this.entity.preparedby;
+            this.entity.info.preparedbytitle = this.entity.preparedbytitle;
+            binding.refresh();
+        }
+        else {
+            create()
+            requestedHandler.load()
+            receivedHandler.load()
+            binding.refresh('entity.*')
+        }
+    }
+    
+    def getLookupRiv() {
+        return InvokerUtil.lookupOpener("riv:lookup", [:] );
+    }
+    
+    def refreshHandler = {
+        binding.refresh();
+    }
+    
+    def add(){
+        return InvokerUtil.lookupOpener("iraf:${entity.info.rivtype}", [ refreshHandler: refreshHandler, iraf: entity, svc: svc ] );
+    }
+    
+    void save(){
+        entity = svc.save( entity );
+        mode = 'view';
+    }
+    
+    void delete(){
+        if( MsgBox.confirm( "Are you sure you want to delete this record?" ) ){
+            svc.delete( entity.objid );
+            init();
+        }
+    }
+    
+    void edit(){
+        mode = 'create';
+    }
+    
+    void approve(){
+        if( MsgBox.confirm("Do you want approve?") )
+            entity = svc.approve( entity.objid );
+    }
+    
+    void cancel(){
+        init();
+        if( selectedItem ){
+            setSelectedItem( selectedItem );
+        }
+    }
+    
+    def getEnv() {
+        return OsirisContext.env;
+    }
+    
+    void setSelectedItem( item ) {
+        selectedItem = item;
+        if( mode !=  "create") {
+            if( selectedItem?.objid ){
+                this.entity = svc.open( selectedItem?.objid );
+                riv = [txnno:entity.rivno]
+            }
+            else {
+                this.entity = [:]
+            }
+        }
+    }
+    
+    def viewCancelledSeries(){
+        return InvokerUtil.lookupOpener("iraf:irafcancelledseries", [iraf: this.entity, svc: svc, rcvitem: receivedItem]);
+    }
+    
+    def reportRIV =[
+        getReportName : { return 'etracs2/tc/report/riv/ReportRIV.jasper' },
+        getSubReports : { 
+            return [
+                new SubReport( 'ReportRIVItem', 'etracs2/tc/report/riv/ReportRIVItem.jasper' ),
+            ] as SubReport[]
+        },
+        getReportData : { return getReportData() },
+        getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ); }
+    ] as ReportModel;
+    
+    def reportRIS =[
+        getReportName : { return 'etracs2/tc/report/ris/ReportRIS.jasper' },
+        getSubReports : { 
+            return [
+                new SubReport( 'ReportRISItem', 'etracs2/tc/report/ris/ReportRISItem.jasper' ),
+            ] as SubReport[]
+        },
+        getReportData : { return getReportData() },
+        getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ); }
+    ] as ReportModel;
+    
+    def reportName = 'RIV'
+    def getReportData() {
+        def list
+        def isNewItem
+        def result = []
+        
+        entity.requesteditems.each{ itm ->
+            list = entity.rcvitems.findAll{ it.afid == itm.afid }
+            def map = list.groupBy{ it.afinventoryid }
+            isNewItem = true
+          
+            map.each{key, val ->
+                def item = [:]
+                if( isNewItem ) {
+                    item.afunit = itm.afunit
+                    item.qtyrequested = itm.qtyrequested
+                    item.afid = val[0].afid
+                    isNewItem = false
+                }else {
+                    item.afunit = null
+                    item.qtyrequested = null
+                    item.afid = null
+                }
+                
+                if( "LGU".equals(entity.info.rivtype) )
+                    item.qtyreceived = val[0].qtyreceived
+                else
+                    item.qtyreceived = val.size()
+                    
+                if( "nonserial".equals(itm.aftype) )
+                    item.series = ""
+                else
+                    getSeries( val, item )
+                    
+                if( val[0].stubno )
+                    item.stubno = val[0].stubno + ' - ' + val[val.size() - 1].stubno
+                    
+                result.add( item )
+            }
+        }
+    
+        return [
+            rivtxnno             : entity.rivno,
+            rivtxndate           : entity.info.rivdate.toString(),
+            requestedby          : entity.rivrequestedby,
+            requestedbytitle     : entity.rivrequestedbytitle,
+            rivtype              : entity.info.rivtype,
+            info                 : [approvedby : entity.info.preparedby, approvedbytitle : entity.info.preparedbytitle],
+            items                : result
+        ]
+    }
+    
+    void getSeries( val, item ) {
+        def startseries
+        def endseries
+        
+        if( val[0].prefix ) {
+            startseries = val[0].prefix + '-' + val.startseries.min()
+            endseries = val[0].prefix + '-' + val.endseries.max()
+            item.series = startseries + " - " + endseries
+        }
+        else if( val[0].suffix ) {
+            startseries = val.startseries.min() + "-" + val[0].suffix
+            endseries = val.endseries.max() + "-" + val[0].suffix
+            item.series = startseries + " - " + endseries
+        }
+        else
+            item.series = val.startseries.min() + " - " + val.endseries.max()
+    }
+    
+    def getReport() {
+        if( "RIV".equals(reportName) )
+            return reportRIV
+        else
+            return reportRIS
+    }
+    
+    def viewRIV() {
+        reportName = "RIV"
+        report.viewReport()
+        
+        return "report"
+    }
+    
+    def viewRIS() {
+        reportName = "RIS"
+        report.viewReport()
+        
+        return "report"
+    }
+}
+]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.tc.af.IRAFPage"/>
+        <page name="report" template="etracs2.common.PreviewPage" />
+    </pages>
+</workunit>

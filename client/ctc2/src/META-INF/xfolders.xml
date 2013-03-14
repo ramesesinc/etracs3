@@ -1,0 +1,10 @@
+<folders>
+    <folder id="explorer">
+        <folder id="master" caption="Master Management" index="1">
+            <folder id="ctc" caption="Community Tax Certificate"/>
+        </folder>
+        <folder id="report" caption="Reports">
+            <folder id="ctc" caption="CTC Reports"/>
+        </folder>
+    </folder>
+</folders>

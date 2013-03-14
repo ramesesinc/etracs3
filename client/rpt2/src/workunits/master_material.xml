@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    
+    <invokers>
+        <invoker type="quick_launcher" code="MAT01" action="create" caption="Material" role="MASTER_ENCODER" permission="material.create"/>
+        <invoker type="material_create" action="create" caption="Material" />
+        <invoker type="material_open" action="open" caption="Material" />
+    </invokers>
+        
+    <code lang="groovy">
+        <![CDATA[
+        
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import java.rmi.server.UID;
+        
+        public class MaterialController  extends com.rameses.client.ui.common.SinglePageCRUD  
+        {
+            String serviceName = "MaterialsService"
+            String objectName  = 'material'
+            String getCreateFocusComponent() { return "entity.materialcode"; }
+            String getEditFocusComponent() { return "entity.materialcode"; }
+        }
+        
+        
+        ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.master.ui.MaterialPage" />
+    </pages>
+</workunit>

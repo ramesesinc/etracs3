@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txn/treasury/collection" action="init" caption="Batch Capture (Multi-Account)" role="COLLECTOR" permission="batchcapture.create" index="6"/>
+        
+        <invoker type="batchcapturemulti.create" action="init" caption="Batch Capture (New)" target="window" role="COLLECTOR" permission="batchcapture.create"/>
+        <invoker type="batchcapturemulti.view"  action="open" caption="Batch Capture" target="window" role="COLLECTOR" permission="batchcapture.view"/>
+        
+        <invoker type="quick_launcher" code="BATCHCOL02" action="init" caption="Batch Capture (Multi-Account)" role="COLLECTOR" permission="batchcapture.create" />
+        
+        <invoker type="formActions" action="_close" caption="Close" mnemonic="c" shortcut="ctrl+W" icon="images/cancel.png" />
+        <invoker type="formActions" action="save" caption="Save" mnemonic="s" shortcut="ctrl + S" icon="images/doc-save.png" visibleWhen="#{entity.docstate == DRAFT_STATE}" />
+        <invoker type="formActions" action="delete" caption="Delete" mnemonic="d" shortcut="ctrl + D" icon="images/doc-delete.png" visibleWhen="#{entity.docstate == DRAFT_STATE and entity.objid != null }"  />
+        <invoker type="formActions" action="post" caption="Post" mnemonic="p" shortcut="ctrl + P" icon="images/doc-approve.png" visibleWhen="#{entity.docstate == DRAFT_STATE and entity.objid != null }" />
+    </invokers>
+    
+    <code lang="groovy">
+<![CDATA[
+
+import com.rameses.rcp.annotations.*
+import com.rameses.rcp.common.*
+import com.rameses.osiris2.client.*
+import java.rmi.server.UID
+
+public class BatchCaptureMultiController
+{
+    @Binding
+    def binding
+
+    @Service('ETRACSUserService')
+    def userSvc
+
+    @Service('AFControlService')
+    def afcontrolSvc
+
+    @Service('CollectionTypeService')
+    def colltypeSvc 
+    
+    @Service('BatchCaptureService')
+    def svc
+    
+    @Service('DateService')
+    def dateSvc
+
+    @Service('Var')
+    def VAR
+    
+    def ondelete //handler
+
+    def afcontrol
+    def collectiontype
+    def defaulttxndate 
+    def entity 
+    def errormsg 
+    def DRAFT_STATE = 'DRAFT'
+    def POSTED_STATE = 'POSTED' 
+    def selectedItem 
+    def mode
+    
+    
+    def init() {
+        mode = 'create' 
+        return 'init' 
+    }
+    
+    void open() {
+        entity = svc.open( entity.objid )
+        collectiontype = entity.collectiontype
+        afcontrol = entity.afcontrol 
+        defaulttxndate = entity.defaulttxndate
+        mode = 'view' 
+    }
+    
+    void save() {
+        entity.amount = getTotal()
+        if( mode == 'create' ) {
+            def batch = svc.create( entity )
+            entity.schemaname = batch.schemaname 
+            entity.schemaversion = batch.schemaversion  
+        }
+        else {
+            svc.update( entity )
+        }
+        mode = 'view' 
+    }
+    
+    def delete() {
+        if( MsgBox.confirm('Delete capture collection?') ) {
+            svc.delete( entity.objid )
+            if( ondelete ) ondelete()
+            return '_close' 
+        }
+    }
+    
+    void post() {
+        if( MsgBox.confirm('Post capture collection?') ) {
+            save()
+            svc.post( entity )
+            entity.docstate = POSTED_STATE 
+        }
+    }
+
+    def addItem() {
+        if( entity.series > afcontrol.endseries ) 
+            throw new Exception('Last series has already been added.')
+            
+        return InvokerUtil.lookupOpener('batchcapturemulti.add', [
+            batch       : entity,
+            afcontrol   : afcontrol, 
+            onadd       : { receipt ->
+                svc.validateTxnDate( receipt.txndate )
+                entity.items.add( receipt )
+                entity.series += 1
+                listHandler.load()
+                binding.refresh('total')
+            }
+        ]) 
+    }
+    
+    def editItem() {
+        if( !selectedItem) return 
+        return InvokerUtil.lookupOpener('batchcapturemulti.edit', [
+            batch       : entity,
+            entity      : selectedItem ,
+            afcontrol   : afcontrol, 
+            onedit    : { receipt ->
+                svc.validateTxnDate( receipt.txndate )
+                listHandler.load()
+                binding.refresh('total')
+            }
+        ]) 
+    }
+    
+    void deleteLastItem() {
+        if( ! entity.items ) return 
+        if( MsgBox.confirm('Delete last item?') ) {
+            entity.items.remove( entity.items.size() -1 )
+            entity.series -= 1 
+        }
+    }
+    
+    
+    def createBatch() {
+        defaulttxndate = svc.validateTxnDate( defaulttxndate )
+        entity = [
+                objid           : 'B' + new UID(),
+                docstate        : DRAFT_STATE, 
+                opener          : 'batchcapturemulti', 
+                collector 	: userSvc.getCollector( afcontrol.collectorid ), 
+                collectorid     : afcontrol.collectorid,
+                collectorname   : afcontrol.collectorname,
+                collectortitle  : afcontrol.collectortitle,
+                afcontrol	: afcontrol,
+                collectiontype	: collectiontype,
+                defaulttxndate  : defaulttxndate,
+                items		: [],
+                afid            : afcontrol.afid, 
+                startseries     : afcontrol.currentseries,
+                series          : afcontrol.currentseries,
+                encodedbyid     : afcontrol.assignedtoid,
+                encodedby       : afcontrol.assignedtoname,
+                encodedbytitle  : afcontrol.assignedtotitle, 
+        ]
+        return 'default'
+    }
+    
+    def formatSeries( series, prefix, suffix, serieslength ) {
+        if( !serieslength ) serieslength = 7
+        def p = (prefix ? prefix + '-' : '')
+        def s  = (suffix ? '-' + suffix : '')
+        return p + (series+'').padLeft(serieslength, '0') + s  
+    }
+
+    public List getCollectorlist() {
+        return userSvc.getCollectorList()
+    }
+
+    public List getAfcontrollist() {
+        return afcontrolSvc.getInactiveSerialCaptureList( OsirisContext.env.USERID )
+    }   
+
+    public List getCollectiontypelist() {
+        return colltypeSvc.getListByAfId( afcontrol?.afid ) 
+    }
+    
+    def getTotal() {
+        
+        def total = entity.items.findAll{it.voided == false}.amount.sum()
+        if( ! total ) 
+            return 0.0
+        return total
+    }
+    
+    def listHandler = [
+        getRows     : { return 50 },
+        getColumns  : { return [
+            new Column( name:'serialno', caption:'Serial No.', maxWidth:130 ),
+            new Column( name:'txndate', caption:'Txn Date*', maxWidth:110),
+            new Column( name:'paidby', caption:'Paid By*' ),
+            new Column( name:'paidbyaddress', caption:'Address*' ),
+            new Column( name:'amount', caption:'Amount*', type:'decimal', format:'#,##0.00'),
+            new Column( name:'remarks', caption:'Remarks' ),
+            new Column( name:'voided', caption:'Voided', type:'boolean'),
+        ]},
+        fetchList : { return entity?.items },
+    ] as SubListModel 
+    
+    def itemHandler = [
+        getColumns  : { return [
+            new Column( name:'account', caption:'Account', expression:'#{accttitle}' ),
+            new Column( name:'amount', caption:'Amount' ),
+            new Column( name:'remarks', caption:'Remarks'),
+        ]},
+        fetchList 	: { return selectedItem?.items },
+    ] as SubListModel 
+}
+
+]]>
+    </code>
+    
+    <pages>
+       <page name="init" template="etracs2.tc.collection.BatchCaptureInitPage" />
+       <page template="etracs2.tc.collection.BatchCaptureMultiPage" />
+    </pages>
+</workunit>
+

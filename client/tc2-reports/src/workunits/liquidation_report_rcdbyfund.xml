@@ -1,0 +1,101 @@
+<workunit>
+    <invokers>
+        <invoker type="liquidation_report.rcdbyfund" action="view" visibleWhen="#{entity.opener != 'single'}" />
+        <invoker type="formActions" action="_close"  caption="Back" mnemonic="b" icon="images/back.png"/>
+    </invokers>
+    
+    <code lang="groovy">
+        <![CDATA[
+
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import com.rameses.osiris2.reports.*
+
+        public class LiquidationReportByFundController {
+
+            @Service("ReportParameterService")
+            def svcParam;
+
+            @Service("LiquidationReportService")
+            def svc;
+
+            def fund;
+            def entity;
+            def param =[:];
+            def fundid;
+
+            def report = [
+                getReportName : { return 'etracs2/tc/report/liquidation/rcd/main.jasper' },
+                getSubReports : { 
+                    return [
+                        new SubReport( 'remittances', 'etracs2/tc/report/liquidation/rcd/remittances.jasper' ),
+                        new SubReport( 'otherpayments', 'etracs2/tc/report/liquidation/rcd/otherpayments.jasper' ),
+                        new SubReport( 'reportaforms', 'etracs2/tc/report/liquidation/rcd/reportaforms.jasper' ),
+                        new SubReport( 'reportnsaforms', 'etracs2/tc/report/liquidation/rcd/reportnsaforms.jasper' ),
+                        new SubReport( 'collectionsummary', 'etracs2/tc/report/liquidation/rcd/collectionsummary.jasper' ),
+                        new SubReport( 'reportnonserialsummary', 'etracs2/tc/report/liquidation/rcd/reportnonserialsummary.jasper' ),
+                    ] as SubReport[]
+                },
+                getReportData : { return [liquidationData] },
+                getParameters : { return svcParam.getStandardParameter( 'system' )+param; }
+            ] as ReportModel;
+
+            /*
+            public def getReport(){
+                reportModel.viewReport();
+                return reportModel.report
+            }
+            */
+
+            void view() {
+                getFundList()
+                initFund()
+                report.viewReport()
+                System.out.println('='*50)
+                System.out.println('funds -> ' + funds )
+                System.out.println('svc   -> ' + svc )
+            }
+
+            public def getLiquidationData(){
+                if( !fund ) initFund()      
+                try {
+                    return svc.buildRCDByFundReportData( entity.objid, fund?.objid, fund?.fundname  );
+                }
+                catch(e ) {
+                    e.printStackTrace()
+                    return [:]
+                }
+            }
+
+            void initFund() {
+                if( funds ) 
+                    setFund(funds[0])
+                else
+                    setFund( [objid:'GENERAL', fundname:'GENERAL'] )
+            }
+
+            def funds;
+            public def getFundList(){
+                if( !funds ) this.funds = svc.getFundList()
+                return funds;
+            }
+
+            void setFund( def val ){
+                this.fund = val;
+                this.fundid = val?.objid;
+                this.param.put("FUND", val?.fundname );
+            }
+
+            def back(){
+                return "_close";
+            }
+
+        }
+        ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.tc.report.liquidation.ui.LiquidationReportBPage" />
+    </pages>
+</workunit>

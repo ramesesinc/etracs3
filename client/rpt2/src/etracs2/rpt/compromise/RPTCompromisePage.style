@@ -1,0 +1,35 @@
+"entity.info.first.*|entity.info.second.*|entity.info.notarized.*|selectedWitness|entity.info.downpaymentor.*|entity.info.cypaymentor.*|entity.info.cypaymentamount" [true == true] {
+    enabled:false;
+}
+
+
+"entity.info.first.*|entity.info.second.*|entity.info.notarized.*|selectedWitness" [ (mode =='edit' || mode=='create') && entity.docstate =='DRAFT' ]{
+    enabled:true;
+}   
+
+
+"capturePayment" [entity.docstate != 'APPROVED'] {
+    enabled:false;
+}
+
+"capturePayment" [entity.docstate == 'APPROVED'] {
+    enabled:true;
+}
+
+
+"captureDownpayment|captureCYPayment" [entity.docstate != 'FORPAYMENT'] {
+    enabled:false;
+}
+
+"captureDownpayment|captureCYPayment" [entity.docstate == 'FORPAYMENT'] {
+    enabled:true;
+}
+
+
+"captureDownpayment" [entity.info.downpaymentorno != null ] {
+    enabled:false;
+}
+
+"captureCYPayment" [entity.info.cypaymentorno != null ] {
+    enabled:false;
+}

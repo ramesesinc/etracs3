@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit extends="workunits/faas.xml">
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas"      action="initTxn"  caption="Multiple Claim" mnemonic="t" target="window" role="APPRAISER" permission="transfer.create"  index="10"/>
+        <invoker type="faas_open.MC" action="open" caption="FAAS (Open)" mnemonic="o" shortcut="ctrl O" target="window" icon="images/open.png" role="APPRAISER" permission="faas.open" />
+        <invoker type="faas_viewprevious.MC" action="openPrevious" caption="View Previous" target="popup" icon="images/doc-view.png" />
+        <invoker type="quick_launcher" code="MC01"     action="initTxn"  caption="Multiple Claim" target="window" />
+        
+    </invokers>
+    
+<code lang="groovy">
+        
+import com.rameses.rcp.annotations.* 
+
+public class MultipleClaimController extends etracs2.rpt.groovy.AbstractFAASController 
+{
+    @Service('FAASService')
+    def svc
+    
+    @Service('Var')
+    def var
+    
+    public def getSvc(){ return svc }
+    public def getVar(){ return var }
+    public def getTxnType(){ return 'MC' }
+    public def getTxnTitle(){ return 'Multiple Claim' }
+    public boolean getAllowEditOwner() { return true }
+    public boolean getAllowEditPin() { return true }
+    
+    public def initFaasForTransaction() {
+        return svc.initMultipleClaimTransaction( getCommonInitTxnParams() )
+    }
+}
+
+</code>
+<pages></pages>
+</workunit>
+
+

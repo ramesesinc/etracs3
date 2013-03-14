@@ -1,0 +1,62 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txnmgmt/treasury" caption="Receipt Inquiries" role="COLLECTOR" permission="receipt.inquire" index="40"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class ReceiptInquiryController 
+{
+    @Service("ReceiptService")
+    def svc;
+    
+    def searchText
+    def selectedItem
+    def formActions
+    def opener
+    
+    void setSelectedItem( item ) {
+        selectedItem = item
+        opener = null
+        formActions = null
+        if( selectedItem ) {
+            opener  =InvokerUtil.lookupOpener('inquiry:' + selectedItem.opener, [entity:selectedItem])
+            formActions = InvokerUtil.lookupActions('receipt.actions:' + item.opener, [entity:selectedItem])
+            formActions = formActions.findAll { it.name == 'doPrint' || it.name == 'doPrintDetail' }
+        }
+    }
+    
+    def listHandler = [
+        getRows    : { return 25 },
+        getColumns : {
+            return [
+                new Column(name:'afid', caption:'AF No.', width:50),
+                new Column(name:'serialno', caption:'Serial No.', width:80),
+                new Column(name:'payorname', caption:'Payor', width:150),
+                new Column(name:'collectiontype', caption:'Collection Type', width:100),
+                new Column(name:'amount', caption:'Amount', type:'decimal', width:100),
+            ]
+        }, 
+        fetchList : { 
+            def searchParam = [ searchText:searchText ]
+            return svc.getList( searchParam, it ) 
+        },
+    ] as PageListModel
+    
+    void search() {
+        listHandler.load()
+    }
+    
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.tc.collection.ReceiptInquiryPage"/>
+    </pages>
+</workunit>

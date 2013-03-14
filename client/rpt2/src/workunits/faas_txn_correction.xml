@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit extends="workunits/faas.xml">
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas"      action="initTxn"    caption="Correction of Entry" mnemonic="f" target="window" role="APPRAISER" permission="transfer.create"  index="8"/>
+        <invoker type="faas_open.CE" action="open" caption="FAAS (Open)" mnemonic="o" shortcut="ctrl O" target="window" icon="images/open.png" role="APPRAISER" permission="faas.open" />
+        <invoker type="faas_viewprevious.CE" action="openPrevious" caption="View Previous" target="popup" icon="images/doc-view.png" />
+        <invoker type="quick_launcher" code="CE01"      action="initTxn"    caption="Correction of Entry" target="window" />
+        
+    </invokers>
+    
+<code lang="groovy">
+        
+import com.rameses.rcp.annotations.* 
+
+public class CorrectionClassificationController extends etracs2.rpt.groovy.AbstractFAASController 
+{
+    @Service('FAASService')
+    def svc
+    
+    @Service('Var')
+    def var
+    
+    public def getSvc(){ return svc }
+    public def getVar(){ return var }
+    public def getTxnType(){ return 'CE' }
+    public def getTxnTitle(){ return 'Correction of Entry' }
+    public boolean getAllowEditOwner() { return true }
+    public boolean getAllowEditPin() { return true }
+    
+    public def initFaasForTransaction() {
+        return svc.initCorrectionTransaction( getCommonInitTxnParams() )
+    }
+    
+}
+
+</code>
+<pages></pages>
+</workunit>
+
+

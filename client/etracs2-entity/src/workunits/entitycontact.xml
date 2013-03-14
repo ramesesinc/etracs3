@@ -1,0 +1,58 @@
+<workunit>
+    <invokers>
+        <invoker type="entitycontact.create" action="create" caption="Contact Information (New)" target="popup" />
+        <invoker type="entitycontact.edit" action="edit" caption="Contact Information" target="popup" />
+        
+        <invoker type="formActions" action="save" caption="OK" mnemonic="o" />
+        <invoker type="formActions" action="cancel" caption="Cancel" mnemonic="c"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*
+import com.rameses.rcp.annotations.*
+import com.rameses.osiris2.client.*
+
+class EntityContactController 
+{
+    @Binding
+    def binding
+    
+    @Service('EntityService')
+    def svc 
+    
+    def onadd       //handler
+    def onupdate    //handler
+    
+    def contact = [:] 
+    def mode = 'create' 
+    
+    void create() {
+        mode = 'create' 
+    }
+    
+    void edit(){
+        mode = 'edit' 
+    }
+    
+    def save() {
+        if( mode == 'create' && onadd ) onadd( contact )
+        else if( mode == 'edit' && onupdate ) onupdate( contact )
+        return '_close' 
+    }
+    
+    def cancel() {
+        return '_close' 
+    }
+    
+    def getContactTypes() {
+        return svc.getContactTypes()
+    }
+}
+
+]]>
+    </code>
+    <pages>
+        <page template="etracs2.entity.EntityContactPage"/>
+    </pages>
+</workunit>

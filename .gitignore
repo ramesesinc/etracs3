@@ -1,5 +1,8 @@
 tmp/
 workspace/
+client/*/build
+client/*/dist
 */dist
 */build
 */build.xml
+

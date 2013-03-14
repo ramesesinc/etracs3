@@ -1,0 +1,28 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/treasury" caption="Banks" doctype="bank" role="MASTER_ENCODER" permission="bank.view" target="window" index="55" />
+        <invoker type="quick_launcher" code="BANK00" caption="Banks" doctype="bank" role="MASTER_ENCODER" permission="bank.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class BankMgmtController2 extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'BankService'
+            String objectName  = 'bank'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"bankcode", caption:"Bank Code"),
+                    new Column(name:"bankname", caption:"Bank Name"),
+                    new Column(name:"branchname", caption:"Branch Name"),
+                ] as Column[]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

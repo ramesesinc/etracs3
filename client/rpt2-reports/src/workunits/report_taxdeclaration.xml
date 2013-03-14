@@ -1,0 +1,98 @@
+<workunit>
+    <invokers>
+        <invoker type="assessorreports.td" action="init" caption="Tax Declaration" target="popup" icon="images/doc-view.png" />
+        <invoker type="td.preview" action="init" caption="Tax Declaration" target="popup" icon="images/doc-view.png" />
+        <invoker type="assessorreports.printtd" action="print" caption="Print"/>
+        
+        <invoker type="faasmgmt.action" action="init" caption="Tax Declaration" index="102" icon="images/doc-view.png" target="window" visibleWhen="#{showActions == true}"/>
+        
+        <invoker type="formActions" action="_close" caption="Back" mnemonic="b" shortcut="ctrl B" icon="images/back.png"/>
+        
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+import com.rameses.osiris2.reports.*;
+
+class TaxDeclarationReportController
+{
+    @Service("ReportParameterService")
+    def svcParams;
+    
+    @Service('DateService')
+    def svcDate;
+    
+    @Service("TDReportService")
+    def svc;
+   
+    def data;
+    def faasid;
+    
+    void init(){
+        if( !faasid ) throw new Exception( "Select a FAAS. $faasid " );
+        view();
+    }
+    
+    def view() {
+       data = svc.getReportData( faasid );
+       if( !data ) throw new Exception("No results found.");
+       report.viewReport();
+       return "preview";
+    }
+    
+    def getReport() {
+        if( svc.getTDReportName() == 'tdreport') {
+            return report_new
+        }
+        return report_old 
+    }
+    
+    def report_new =[
+        getReportName : { return 'etracs2/rpt/report/tdreport/TDReport.jasper' },
+        getSubReports : { 
+            return [
+                new SubReport( 'TDReportLand',  'etracs2/rpt/report/tdreport/TDReportLandCustom.jasper'),
+                new SubReport( 'TDReportBldg',  'etracs2/rpt/report/tdreport/TDReportBldg.jasper'),
+                new SubReport( 'TDReportMach',  'etracs2/rpt/report/tdreport/TDReportImprovement.jasper'),
+                new SubReport( 'TDReportPlant',  'etracs2/rpt/report/tdreport/TDReportImprovement.jasper'),
+                new SubReport( 'TDReportMisc',  'etracs2/rpt/report/tdreport/TDReportImprovement.jasper'),
+                new SubReport( 'TDReportAnnotation',  'etracs2/rpt/report/tdreport/TDReportAnnotation.jasper'),
+            ] as SubReport[]
+        },
+        getReportData : { return data; },
+        getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ); }
+    ] as ReportModel;
+    
+    def report_old =[
+        getReportName : { return 'etracs2/rpt/report/tdreport_old/TDOldReport.jasper' },
+        getSubReports : { 
+            return [
+                new SubReport( 'Land1Report', 'etracs2/rpt/report/tdreport_old/Land1Report.jasper' ),
+                new SubReport( 'Land2Report', 'etracs2/rpt/report/tdreport_old/Land2Report.jasper' ),
+                new SubReport( 'TreeRPUReport', 'etracs2/rpt/report/tdreport_old/TreeRPUReport.jasper' ),
+                new SubReport( 'MachRPUReport', 'etracs2/rpt/report/tdreport_old/MachRPUReport.jasper' ),
+                new SubReport( 'TDAssessmentReport', 'etracs2/rpt/report/tdreport_old/TDAssessmentReport.jasper' ),
+            ] as SubReport[]
+        },
+        getReportData : { return data; },
+        getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ); }
+    ] as ReportModel;
+    
+    def print(){
+        try {
+            init();
+            ReportUtil.print( report.report, true )
+        }catch( e ) { MsgBox.alert( e.message ) }
+        return '_close';
+    }
+}
+]]>        
+        
+    </code>
+    <pages>
+        <page name="preview" template="etracs2.common.PreviewPage" />
+    </pages>
+</workunit>

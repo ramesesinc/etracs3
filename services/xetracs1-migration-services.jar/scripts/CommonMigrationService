@@ -1,0 +1,96 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import java.util.concurrent.*;
+
+class CommonMigrationService
+{
+    @PersistenceContext("etracsv1")
+    def em1;
+    
+    @PersistenceContext("main")
+    def em2;
+    
+    
+	@ProxyMethod 
+	public def getObjidList( version, objname, module ) {
+		return em1.sqlContext.createNamedQuery( version + "_"+ module +":" + objname + "_ids" ).resultList 
+	} 
+	
+	@ProxyMethod()
+	public def xxinsertObject( version, objname, list, module )
+	{
+		def execsvc = java.util.concurrent.Executors.newFixedThreadPool(2);
+		def tasks = [];
+		
+		def errorlist = [];
+		list.each { item ->
+			tasks << execsvc.submit(
+				{
+					println 'processing lgu: objid -> ' + it.objid;
+					def info = em1.sqlContext.createNamedQuery( version + "_"+ module +":" + objname + "_info")
+											.setParameter(objid, item.objid)
+											.singleResult;
+					if( info ) {
+						try { 
+							em2.sqlContext.createNamedExecutor(version + "_"+ module +":"+ objname  +"_insert")
+										.setParameters(info)
+										.execute()
+						} catch(e) {
+							println e.message
+							errorlist.add( objname  + ' id' + item.objid  + '     [' + e.message + ']' ); 
+						}				
+										
+					}
+				} as Runnable ); 
+		}
+		tasks.each{it.get()}
+		try{ execsvc.shutdown() } catch(e) {}
+		
+		return errorlist
+	}
+	
+	@ProxyMethod
+	public def insertObject( version, objname, list, module )
+	{
+		def errorlist=[];
+		list.each { item ->
+			println 'processing lgu: objid -> ' + item.objid;
+			def info = em1.sqlContext.createNamedQuery( version + "_"+ module +":" + objname + "_info")
+									.setParameter('objid', item.objid)
+									.singleResult;
+			if( info ) {
+				try { 
+					em2.sqlContext.createNamedExecutor(version + "_"+ module +":"+ objname  +"_insert")
+								.setParameters(info)
+								.execute()
+				} catch(e) {
+					println e.message
+					errorlist.add( objname  + ' id' + item.objid  + '     [' + e.message + ']' ); 
+				}				
+								
+			}
+		}
+		return errorlist
+	}
+	
+	@ProxyMethod
+	public def insertObjectById( version, objname, objid, module )
+	{
+		println 'processing lgu: objid -> ' + objid
+		def info = em1.sqlContext.createNamedQuery( version + "_"+ module +":" + objname + "_info")
+								.setParameter('objid', objid)
+								.singleResult;
+		def msg = 'Success'
+		if( info ) {
+			try { 
+				em2.sqlContext.createNamedExecutor(version + "_"+ module +":"+ objname  +"_insert")
+							.setParameters(info)
+							.execute()
+			} catch(e) {
+				println e.message
+				msg = e.message  
+			}				
+							
+		}
+	}
+}	

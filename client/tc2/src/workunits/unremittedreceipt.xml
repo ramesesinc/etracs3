@@ -1,0 +1,109 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txnmgmt/treasury" action="init" caption="Unremitted Collections" role="COLLECTOR" permission="receipt.viewissued" index="200"/>
+        <invoker type="home.action" action="init" caption="Unremitted Collections" role="COLLECTOR" permission="receipt.viewissued" index="104" icon="images/folder.png" target="window"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class IssuedReceiptController 
+{
+    @Service("ReceiptService")
+    def svc;
+    
+    @Service('ETRACSUserService')
+    def userService
+    
+    @Binding
+    def binding
+    
+    def searchText
+    def selectedItem
+    def formActions
+    def total
+    def list = []
+    
+    void init() {
+        total = getTotalCollection()
+    }
+    
+    def getTotalCollection() {
+        return svc.getTotalUnremittedReceipts( OsirisContext.env.USERID )
+    }
+    
+    void setSelectedItem( item ) {
+        selectedItem = item 
+        formActions = null
+        if( item ) {
+            formActions = InvokerUtil.lookupActions('receipt.actions:' + item.opener, [entity:selectedItem])
+        }
+    }
+    
+    def listHandler = [
+        getRows    : { return 25 },
+        getColumns : {
+            return [
+                new Column(name:'mode', caption:'Mode', width:100),
+                new Column(name:'afid', caption:'AF No.', width:70),
+                new Column(name:'stubno', caption:'Stub No.', width:70),
+                new Column(name:'txndate', caption:'Txn Date', width:90),
+                new Column(name:'serialno', caption:'Serial No.', width:120),
+                new Column(name:'collectiontype', caption:'Collection Type', width:200),
+                new Column(name:'paidby', caption:'Paid By', width:400),
+                new Column(name:'amount', caption:'Amount', type:'decimal', width:100),
+                new Column(name:'voidreason', caption:'Voided', width:100),
+                new Column(name:'capturedbyname', caption:'Issued By', width:400),
+            ]
+        }, 
+        fetchList : { 
+            total = getTotalCollection()
+            list = svc.getUnremittedReceiptList( OsirisContext.env.USERID, searchText, it ) 
+            binding?.refresh('total|subtotal')
+            return list 
+        },
+    ] as PageListModel
+    
+    void search() {
+        listHandler.load()
+        binding.refresh('total')
+    }
+    
+    def getSubtotal() {
+        def unvoidedReceipts = list.findAll{ it.voided == 0 || it.voided == false }
+        if( unvoidedReceipts ) 
+            return unvoidedReceipts.amount.sum()
+        return 0.0
+    }
+     /**
+    def getCollector() {
+        try {
+            return userService.getCollector( OsirisContext.env.USERID )
+        }
+        catch( e) {
+            return null 
+        }
+    }
+    
+   
+    def buildSearchParam() {
+        return [ 
+            collectorid  : collector?.objid, 
+            capturedbyid : (collector ? null : OsirisContext.env.USERID ), 
+            docstate     : 'OPEN',
+            searchText   : searchText 
+        ]
+    }
+    **/
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.tc.collection.IssuedReceiptPage"/>
+    </pages>
+</workunit>

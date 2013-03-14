@@ -1,0 +1,211 @@
+import com.rameses.common.*
+import com.rameses.annotations.*
+import java.rmi.server.UID 
+
+public class XBPCollectionPatch01
+{
+	@PersistenceContext('main')
+	def em
+	
+	def INCOMEACCT_SCHEMA = 'incomeacct:incomeacct'
+	def RECEIPTITEM_SCHEMA = 'receipt:receiptitem'
+	
+	@Service('NumberService')
+	def numSvc
+	
+	
+	@ProxyMethod
+	public void fixReceiptItemPosting( serialno ){
+		def receipt = em.sqlContext.createQuery('''
+							SELECT objid, docstate, extended 
+							FROM receiptlist 
+							WHERE serialno = $P{serialno}
+							  AND doctype = $P{doctype}
+						''')
+						.setParameter('serialno', serialno)
+						.setParameter('doctype', 'BUSINESS_TAX')
+						.singleResult 
+						
+		if( ! receipt ) throw new Exception("Cannot open Receipt $serialno.")
+		
+		def extended = em.serializer.read( receipt.extended )
+		if( extended.bpreceiptitemfixed != null && extended.bpreceiptitemfixed == true ) {
+			return 
+		}
+		
+		extended.bpreceiptitemfixed = true  
+		
+		def items = em.sqlContext.createQuery('SELECT * FROM receiptitem WHERE receiptid = $P{receiptid}')
+						.setParameter('receiptid', receipt.objid)
+						.resultList
+						.each {
+							it.putAll( em.serializer.read( it.extended ) )
+							it.remove('extended')
+						}
+		items.each{
+			def oldamount = it.amount 
+			postSurcharge( receipt, it )
+			postInterest( receipt, it )
+			
+			if( it.amount != oldamount ) {
+				it.amount = numSvc.round( it.amount )
+				it.taxamount = numSvc.round( it.taxamount )
+				
+				//update reeiptitem amount
+				em.update(RECEIPTITEM_SCHEMA, it)
+						
+				//update revenue amount
+				em.sqlContext.createExecutor('UPDATE revenue SET amount = $P{amount} WHERE objid = $P{objid}')
+						.setParameter('amount', it.amount )
+						.setParameter('objid', it.objid)
+			}
+		}
+		
+		em.sqlContext.createExecutor('UPDATE receiptlist SET extended = $P{extended} WHERE objid =$P{objid}')
+				.setParameter('extended', em.serializer.write(extended ))
+				.setParameter('objid', receipt.objid )
+				.execute()
+	}
+	
+	void postSurcharge( receipt, item ) {
+		if( item.surcharge == 0.0 ) return 
+		
+		def acct = em.read(INCOMEACCT_SCHEMA, [objid: item.surchargeacctid]);
+		if( acct ) {
+			def surchargeItem = createItem( receipt.objid, item.surchargetaxfeeid, item, acct, item.surcharge )
+			em.validate(RECEIPTITEM_SCHEMA, surchargeItem)
+			em.create(RECEIPTITEM_SCHEMA, surchargeItem)
+			if( receipt.docstate == 'CLOSED' ) {
+				postToRevenue( surchargeItem )
+			}
+			item.amount -= item.surcharge 
+			item.taxamount -= item.surcharge 
+		}
+	}
+	
+	void postInterest( receipt, item ) {
+		if( item.interest == 0.0 ) return 
+		def acct = em.read(INCOMEACCT_SCHEMA, [objid: item.interestacctid]);
+		if( acct ) {
+			def interestItem = createItem( receipt.objid, item.interesttaxfeeid, item, acct, item.interest )
+			em.validate(RECEIPTITEM_SCHEMA, interestItem)
+			em.create(RECEIPTITEM_SCHEMA, interestItem)
+			if( receipt.docstate == 'CLOSED' ) {
+				postToRevenue( interestItem )
+			}
+			item.amount -= item.interest 
+			item.taxamount -= item.interest 
+		}
+	}
+	
+	def createItem( receiptid, taxfeeid, taxfee, acct, amount ) {
+		return [
+			objid		: 'TRI-' + new UID(),
+			receiptid	: receiptid, 
+			iyear		: taxfee.year, 
+			iqtr		: taxfee.qtr,  
+			lobid		: taxfee.lobid,
+			lobname		: taxfee.lobname,
+			acctid		: acct.objid, 
+			acctno		: acct.acctno,
+			accttitle	: acct.accttitle,
+			systype 	: acct.systype,
+			fundid		: acct.fundid,
+			fundname	: acct.fundname,
+			surcharge	: 0.0,
+			discount	: 0.0,
+			interest	: 0.0,
+			taxamount	: numSvc.round(amount) ,
+			amount 		: numSvc.round(amount),	
+			taxfeeid    : taxfeeid,
+		]
+	}
+	
+	void postToRevenue( item ) {
+		em.sqlContext.createExecutor( getInsertRevenueSql() )
+					.setParameter('itemid', item.objid )
+					.execute()
+	}
+	
+	def getInsertRevenueSql() {
+		return '''
+			INSERT INTO revenue 
+			( 
+				objid, 
+				docstate, 
+				remittanceid, 
+				remittanceno, 
+				remittancedate, 
+				remittancetimestamp, 
+				liquidationid,
+				liquidationno,
+				liquidationdate,
+				liquidationtimestamp,
+				collectorid, 
+				collectorname, 
+				collectortitle, 
+				receipttype, 
+				receiptid, 
+				receiptdate, 
+				receiptamount, 
+				receiptitemid, 
+				afid, 
+				afcontrolid, 
+				stubno, 
+				serialno, 
+				payorname, 
+				payoraddress, 
+				acctid, 
+				acctno, 
+				accttitle, 
+				fundid, 
+				fundname, 
+				ngasid, 
+				sreid, 
+				amount, 
+				voided
+				)
+			SELECT 
+				ri.objid AS objid, 
+				'REMITTED' AS docstate, 
+				rem.objid AS remittanceid, 
+				rem.txnno AS remittanceno, 
+				rem.txndate AS remittancedate, 
+				rem.txntimestamp AS remittancetimestamp, 
+				lq.objid as liquidationid,
+				lq.txnno as liquidationno,
+				lq.txndate as liquidationdate,
+				lq.txntimestamp as liquidationtimestamp,
+				rct.collectorid, 
+				rct.collectorname, 
+				rct.collectortitle, 
+				rct.doctype AS receipttype, 
+				rct.objid AS receiptid, 
+				rct.txndate AS receiptdate, 
+				CASE WHEN rct.voided = 0 THEN rct.amount ELSE 0.0 END AS receiptamount, 
+				ri.objid AS receiptitemid, 
+				rct.afid, 
+				rct.afcontrolid, 
+				rct.stubno, 
+				rct.serialno, 
+				rct.payorname, 
+				rct.payoraddress, 
+				ri.acctid, 
+				ri.acctno, 
+				ri.accttitle, 
+				ri.fundid, 
+				ri.fundname, 
+				ia.ngasid, 
+				ia.sreid, 
+				CASE WHEN rct.voided = 0 THEN ri.amount ELSE 0.0 END AS amount,  
+				rct.voided 
+			FROM receiptlist rct
+					INNER JOIN receiptitem ri ON rct.objid = ri.receiptid 
+					INNER JOIN incomeaccount ia ON ri.acctid= ia.objid 
+					LEFT JOIN remittancelist rem ON rct.remittanceid = rem.objid 
+					LEFT JOIN liquidationlist lq ON rem.liquidationid = lq.objid 
+			WHERE ri.objid = $P{itemid}
+		'''
+	}
+}
+	

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit extends="workunits/faas.xml">
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas"      action="generalRevision"  caption="General Revision" mnemonic="t" target="window" role="APPRAISER" permission="transfer.create"  index="11"/>
+        <invoker type="faas_open.GR" action="open" caption="FAAS (Open)" mnemonic="o" shortcut="ctrl O" target="window" icon="images/open.png" role="APPRAISER" permission="faas.open" />
+        <invoker type="faas_viewprevious.GR" action="openPrevious" caption="View Previous" target="popup" icon="images/doc-view.png" />
+        <invoker type="quick_launcher" code="GE01"     action="generalRevision"  caption="General Revision" target="window" />
+        
+    </invokers>
+    
+<code lang="groovy">
+        
+import com.rameses.rcp.annotations.* 
+
+public class GeneralRevisionController extends etracs2.rpt.groovy.AbstractFAASController 
+{
+    @Service('FAASService')
+    def svc
+    
+    @Service('GeneralRevisionService')
+    def grSvc
+    
+    @Service('Var')
+    def var
+    
+    public def getSvc(){ return svc }
+    public def getVar(){ return var }
+    public def getTxnType(){ return 'GR' }
+    public def getTxnTitle(){ return 'General Revision' }
+    
+    public def initFaasForTransaction() {
+        return svc.initGeneralRevisionTransaction( getCommonInitTxnParams() )
+    }
+    
+    def generalRevision() {
+        initTxn()
+        return 'grinit' 
+    }
+    
+}
+
+</code>
+<pages>
+    <page name="grinit" template="etracs2.rpt.faas.FAASGRInitPage"/>
+</pages>
+</workunit>
+
+

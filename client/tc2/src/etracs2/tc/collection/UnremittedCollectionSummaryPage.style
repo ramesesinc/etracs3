@@ -1,0 +1,21 @@
+"entity.fromseries|entity.toseries" [ entity.type == 'byseries' ] {
+    enabled:true;
+    required:true;
+}
+
+"entity.payorname" [ entity.type == 'byseries' ] {
+    enabled:false;
+    required:false;
+}
+
+"entity.payorname" [ entity.type == 'bytaxpayer' ] {
+    enabled:true;
+    required:true;
+}
+
+"entity.fromseries|entity.toseries" [ entity.type == 'bytaxpayer' ] {
+    enabled:false;
+    required:false;
+}
+
+

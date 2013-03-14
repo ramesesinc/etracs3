@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    
+    <invokers>
+        <invoker type="quick_launcher" code="ST01" action="create" caption="Structure" role="MASTER_ENCODER" permission="structure.create"/>
+        <invoker type="structure_create" action="create" caption="Structure" />
+        <invoker type="structure_open" action="open" caption="Structure" />
+    </invokers>
+        
+    <code lang="groovy">
+        <![CDATA[
+        
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import java.rmi.server.UID;
+        
+        public class StructureController  extends com.rameses.client.ui.common.SinglePageCRUD  
+        {
+            String serviceName = "StructuresService"
+            String objectName  = 'structure'
+            String getCreateFocusComponent() { return "entity.structurecode"; }
+            String getEditFocusComponent() { return "entity.structurecode"; }
+            
+            def materials
+            def errorMsg
+            
+            def createObject() {
+                return [materials : [] ]
+            }
+            
+            def afterRemove() {
+                materialsHandler.load()
+            }
+            
+            def lookupMaterials = InvokerUtil.lookupOpener("materials:lookup",[:]);
+            
+            def materialsHandler = [
+                getRows    : { return 20; },
+                getColumns : {
+                    return [
+                        new Column(name:"material", caption:"Code*", minWidth:50, editable:true, type:"lookup", handler:lookupMaterials, expression: '#{materialcode}'),
+                        new Column(name:"materialdesc", caption:"Material", minWidth:200, editable:false),
+                    ];
+                },
+                fetchList : { 
+                    return entity.materials; 
+                },
+                createItem : { return  [_objid: 'I' + new UID() ]; },
+                onAddItem : { item -> entity.materials.add( item ); },
+                onRemoveItem : { item -> 
+                    if( mode == "view" ) return false;
+                    if( MsgBox.confirm("Delete selected item?") ) {
+                        entity.materials.remove( item );
+                    }
+                    clearError()
+                },
+                validate :  {li -> validateMaterial( li.item ) },
+            ] as SubListModel;
+            
+            void validateMaterial( item ) {
+                try {
+                    if( ! item.material ) throw new Exception('Material is required.')
+                    checkDuplicate( item )
+                    
+                    item.objid = item.material.objid;
+                    item.materialcode = item.material.materialcode;
+                    item.materialdesc = item.material.materialdesc;
+                    clearError()
+                }
+                catch( e )  {
+                    errorMsg = e.message
+                    binding.refresh( 'errorMsg' )
+                    throw e 
+                }
+            }
+            
+            void checkDuplicate( item ) {
+                def list = entity.materials.findAll{ it.objid == item.material.objid }
+                if( list ) throw new Exception('Duplicate material is not allowed.')
+            }
+            
+            void clearError() {
+                errorMsg = null
+                binding.refresh( 'errorMsg' )
+            }
+        }
+        
+        
+        ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.master.ui.StructurePage" />
+    </pages>
+</workunit>

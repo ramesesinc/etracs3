@@ -1,0 +1,61 @@
+<workunit>
+    <invokers>
+        <invoker type="bp.bppermitreport" action="view" caption="Business Permit" target="window"/>
+        <invoker type="formActions" action="back" caption="Back" mnemonic="b" shortcut="ctrl b" icon="images/back.png"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+import com.rameses.osiris2.reports.*;
+import java.rmi.server.UID;
+
+class BusinessPermitController
+{
+    @Service("ReportParameterService")
+    def svcParams;
+    
+    @Service("BPPermitReportService")
+    def svc;
+
+    def applicationid;
+    def app;
+    
+    def report = [
+        getReportName : { return 'etracs2.bp.report.businesspermit/BusinessPermit.jasper' },
+        getSubReports : { 
+            return [
+                new SubReport( 'BusinessPermitLOB', 'etracs2.bp.report.businesspermit/BusinessPermitLOB.jasper' ),
+                new SubReport( 'BusinessPermitOR', 'etracs2.bp.report.businesspermit/BusinessPermitOR.jasper' ),
+                new SubReport( 'BusinessPermitLOB_i', 'etracs2.bp.report.businesspermit/BusinessPermitLOB_i.jasper' ),
+                new SubReport( 'BusinessPermitLOB_ii', 'etracs2.bp.report.businesspermit/BusinessPermitLOB_ii.jasper' ),
+            ] as SubReport[]
+        },
+        getReportData : { return [appReport.info]; },
+        getParameters : { getStandardReportParams() + app.params }
+    ] as ReportModel;
+    
+    void view() {
+       report.viewReport();
+    }
+    
+    def back(){ return '_close'; }
+
+    def getAppReport(){
+        if( !app ) app =  svc.getPermitReportInfo( applicationid );
+        return app;
+    }
+    
+    def getStandardReportParams() { return svcParams.getStandardParameter( OsirisContext.env.USERNAME ); }
+
+}
+
+]]>
+        
+    </code>
+    <pages>
+        <page template="etracs2.bp.PreviewPage"/>
+    </pages>
+</workunit>

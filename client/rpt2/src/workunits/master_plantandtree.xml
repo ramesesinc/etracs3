@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    
+    <invokers>
+        <invoker type="quick_launcher" code="PT01" action="create" caption="Plant and Tree" role="MASTER_ENCODER" permission="planttree.create"/>
+        <invoker type="planttree_create" action="create" caption="Plant and Tree" />
+        <invoker type="planttree_open" action="open" caption="Plant and Tree" />
+    </invokers>
+        
+    <code lang="groovy">
+        <![CDATA[
+        
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import java.rmi.server.UID;
+        
+        public class PlantandTreeController  extends com.rameses.client.ui.common.SinglePageCRUD 
+        {
+            String serviceName = "PlantsandTreesService"
+            String objectName  = 'plantandtree'
+            String getCreateFocusComponent() { return "entity.planttreecode"; }
+            String getEditFocusComponent() { return "entity.planttreecode"; }
+        }
+        
+        
+        ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.master.ui.PlantTreePage" />
+    </pages>
+</workunit>

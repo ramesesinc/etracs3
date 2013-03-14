@@ -1,0 +1,41 @@
+"rpu.*|classification|exemption" [ true == true ] {
+    enabled:true;
+}
+
+"exemption" [ rpu.taxable == true ] {
+    enabled:false;
+}
+
+"exemption" [ rpu.taxable == false ] {
+    enabled:true;
+}
+
+"selectedItem" [ true == true ] {
+    readonly:false
+}
+
+"viewMachines" [selectedItem == null && selectedItem.actualuseid == null] {
+    enabled:false;
+}
+
+"viewMachines" [selectedItem != null && selectedItem.actualuseid != null] {
+    enabled:true;
+}
+
+
+
+"exemption" [ rpu.taxable == 1] {
+    enabled:false;
+}
+
+"exemption" [ rpu.taxable == 0 ] {
+    enabled:true;
+}
+
+
+
+"selectedItem|classification" [ allowEdit == false ] {
+    readonly:true;
+}
+
+

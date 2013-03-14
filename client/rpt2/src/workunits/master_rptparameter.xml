@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    
+    <invokers>
+        <invoker type="quick_launcher" code="RPARAM01" action="create" caption="Parameter" role="MASTER_ENCODER" permission="rptparameter.create"/>
+        <invoker type="rptparameter_create" action="create" caption="Parameter" />
+        <invoker type="rptparameter_open" action="open" caption="Parameter" />
+    </invokers>
+        
+    <code lang="groovy">
+        <![CDATA[
+        
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import java.rmi.server.UID;
+        
+        public class RPTParameterController  extends com.rameses.client.ui.common.SinglePageCRUD 
+        {
+            String serviceName = "RPTParametersService"
+            String objectName  = 'rptparameter'
+            String getCreateFocusComponent() { return "paramname"; }
+            String getEditFocusComponent() { return "paramname"; }
+            
+            def datatype;
+            def paramname;
+            
+            def getParamname(){
+                return entity.paramname;
+            }
+            
+            void setParamname( paramname ){
+                entity.paramname = trimSpecialChar(paramname);
+            }
+
+            def getDataTypes(){
+                return ['decimal', 'integer', 'range_decimal', 'range_integer'];
+            }
+            
+            
+            def createObject(){
+                return [
+                    paramtype   : 'decimal',
+                    parammin    : 0,
+                    parammax    : 0
+                ];
+            }
+            
+            def trimSpecialChar( str ){
+                String result = "";
+                if( str ){
+                    result = str.replaceAll("\\W", "");
+                }
+                
+                return result;
+            }
+        }
+        
+        
+        ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.master.ui.RPTParameterPage" />
+    </pages>
+</workunit>

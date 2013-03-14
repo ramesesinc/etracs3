@@ -1,0 +1,90 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="LOB01" action="create" caption="Line of Business" role="MASTER_ENCODER" permission="lob.create"/>
+        <invoker type="lob_create" action="create" caption="Line of Business" />
+        <invoker type="lob_open" action="open" caption="Line of Business" />
+        <invoker type="formActions" action="approve" shortcut="ctrl A" visibleWhen="#{mode == 'view' and entity.objid != null and entity.docstate=='DRAFT'}" immediate="true" caption="Approve" mnemonic="d" icon="images/doc-approve.png"  />
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class LobController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+
+    def classification
+    def searchAttribute
+    def attribute
+    
+    String serviceName = 'LOBService'
+    String objectName  = 'lob'
+    String getCreateFocusComponent() { return 'entity.name' }
+    String getEditFocusComponent() { return 'entity.name' }
+    
+    def createObject() {
+        entity = [:]
+        entity.attributes = []
+        classification = null
+        attributeListHandler.load()
+        return entity
+    }
+    
+    def openObject(){
+        def object = super.openObject()
+        this.classification = [objid:entity.classificationid, name:entity.classification ]
+        return object 
+    }
+    
+    void setClassification( classification ) { 
+        this.classification = classification
+        entity.classificationid = classification?.objid
+        entity.classification = classification?.name
+    }
+    
+    def getLookupClassification() {
+        return InvokerUtil.lookupOpener('lobclassification.lookup', [:])
+    }
+    
+    def onselectAttribute = { attr ->
+        if( !entity.attributes ) entity.attributes = [];
+        if( !entity.attributes.find{ it.objid == attr.objid } ){
+            entity.attributes << attr;
+            attributeListHandler.load()
+        }
+        searchAttribute = null
+        binding.refresh('searchAttribute')
+    }
+    
+    def lookupAttribute() {
+        return InvokerUtil.lookupOpener('lobattribute.lookup', [searchText:searchAttribute, onselect:onselectAttribute])
+    }
+    
+    def attributeListHandler = [
+        getColumns : {
+            return [
+                new Column(name:'name', caption:'Attribute'),
+            ]
+        },
+        onRemoveItem : { removeAttribute( it ) },
+        fetchList    : { return entity?.attributes },
+    ] as SubListModel
+        
+    void removeAttribute( item ) {
+        if( MsgBox.confirm('Remove selected attribute?') ) {
+            entity.attributes.remove( item )
+        }
+    }
+    
+    
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.bp.master.ui.LobPage"/>
+    </pages>
+</workunit>

@@ -1,0 +1,677 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<Form version="1.3" type="org.netbeans.modules.form.forminfo.JPanelFormInfo">
+  <AuxValues>
+    <AuxValue name="FormSettings_generateMnemonicsCode" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_layoutCodeTarget" type="java.lang.Integer" value="2"/>
+    <AuxValue name="FormSettings_listenerGenerationStyle" type="java.lang.Integer" value="0"/>
+    <AuxValue name="FormSettings_variablesLocal" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_variablesModifier" type="java.lang.Integer" value="2"/>
+    <AuxValue name="designerSize" type="java.awt.Dimension" value="-84,-19,0,5,115,114,0,18,106,97,118,97,46,97,119,116,46,68,105,109,101,110,115,105,111,110,65,-114,-39,-41,-84,95,68,20,2,0,2,73,0,6,104,101,105,103,104,116,73,0,5,119,105,100,116,104,120,112,0,0,1,-118,0,0,2,1"/>
+  </AuxValues>
+
+  <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout"/>
+  <SubComponents>
+    <Component class="com.rameses.rcp.control.XActionBar" name="xActionBar1">
+      <Properties>
+        <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+            <PropertyBean type="com.rameses.rcp.control.border.XUnderlineBorder"/>
+        </Property>
+        <Property name="name" type="java.lang.String" value="formActions"/>
+        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[66, 32]"/>
+        </Property>
+      </Properties>
+      <Constraints>
+        <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout" value="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout$BorderConstraintsDescription">
+          <BorderConstraints direction="North"/>
+        </Constraint>
+      </Constraints>
+    </Component>
+    <Container class="javax.swing.JPanel" name="jPanel1">
+      <Constraints>
+        <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout" value="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout$BorderConstraintsDescription">
+          <BorderConstraints direction="Center"/>
+        </Constraint>
+      </Constraints>
+
+      <Layout>
+        <DimensionLayout dim="0">
+          <Group type="103" groupAlignment="0" attributes="0">
+              <Group type="102" alignment="0" attributes="0">
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="jTabbedPane1" min="-2" pref="445" max="-2" attributes="0"/>
+                  <EmptySpace pref="58" max="32767" attributes="0"/>
+              </Group>
+          </Group>
+        </DimensionLayout>
+        <DimensionLayout dim="1">
+          <Group type="103" groupAlignment="0" attributes="0">
+              <Group type="102" alignment="0" attributes="0">
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="jTabbedPane1" min="-2" pref="318" max="-2" attributes="0"/>
+                  <EmptySpace pref="33" max="32767" attributes="0"/>
+              </Group>
+          </Group>
+        </DimensionLayout>
+      </Layout>
+      <SubComponents>
+        <Container class="javax.swing.JTabbedPane" name="jTabbedPane1">
+
+          <Layout class="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout"/>
+          <SubComponents>
+            <Container class="javax.swing.JPanel" name="jPanel2">
+              <Constraints>
+                <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
+                  <JTabbedPaneConstraints tabName="Discount Due Dates Setting">
+                    <Property name="tabTitle" type="java.lang.String" value="Discount Due Dates Setting"/>
+                  </JTabbedPaneConstraints>
+                </Constraint>
+              </Constraints>
+
+              <Layout>
+                <DimensionLayout dim="0">
+                  <Group type="103" groupAlignment="0" attributes="0">
+                      <Group type="102" attributes="0">
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Component id="formPanel3" alignment="0" min="-2" pref="349" max="-2" attributes="1"/>
+                              <Component id="jLabel2" alignment="0" pref="420" max="32767" attributes="0"/>
+                              <Component id="jLabel1" alignment="1" pref="420" max="32767" attributes="1"/>
+                          </Group>
+                          <EmptySpace max="-2" attributes="0"/>
+                      </Group>
+                  </Group>
+                </DimensionLayout>
+                <DimensionLayout dim="1">
+                  <Group type="103" groupAlignment="0" attributes="0">
+                      <Group type="102" alignment="0" attributes="0">
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Component id="formPanel3" min="-2" pref="129" max="-2" attributes="0"/>
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace pref="110" max="32767" attributes="0"/>
+                      </Group>
+                  </Group>
+                </DimensionLayout>
+              </Layout>
+              <SubComponents>
+                <Container class="com.rameses.rcp.util.FormPanel" name="formPanel3">
+                  <Properties>
+                    <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                      <Border info="org.netbeans.modules.form.compat2.border.LineBorderInfo">
+                        <LineBorder>
+                          <Color PropertyName="color" blue="99" green="99" red="99" type="rgb"/>
+                        </LineBorder>
+                      </Border>
+                    </Property>
+                  </Properties>
+                  <SubComponents>
+                    <Container class="com.rameses.rcp.util.FormPanel" name="formPanel1">
+                      <Properties>
+                        <Property name="addCaptionColon" type="boolean" value="false"/>
+                        <Property name="caption" type="java.lang.String" value="-"/>
+                        <Property name="captionBorder" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                          <Border info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
+                            <EmptyBorder/>
+                          </Border>
+                        </Property>
+                        <Property name="orientation" type="java.lang.String" value="HORIZONTAL"/>
+                        <Property name="padding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                          <Insets value="[1, 5, 5, 5]"/>
+                        </Property>
+                        <Property name="showCaption" type="boolean" value="false"/>
+                      </Properties>
+                      <SubComponents>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField1">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="1st Quarter "/>
+                            <Property name="captionWidth" type="int" value="110"/>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr1discduemonth"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField2">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="-"/>
+                            <Property name="captionWidth" type="int" value="15"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr1discdueday"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XLabel" name="xLabel1">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="(mm-dd)"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                      </SubComponents>
+                    </Container>
+                    <Container class="com.rameses.rcp.util.FormPanel" name="formPanel5">
+                      <Properties>
+                        <Property name="addCaptionColon" type="boolean" value="false"/>
+                        <Property name="caption" type="java.lang.String" value="-"/>
+                        <Property name="captionBorder" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                          <Border info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
+                            <EmptyBorder/>
+                          </Border>
+                        </Property>
+                        <Property name="orientation" type="java.lang.String" value="HORIZONTAL"/>
+                        <Property name="padding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                          <Insets value="[1, 5, 5, 5]"/>
+                        </Property>
+                        <Property name="showCaption" type="boolean" value="false"/>
+                      </Properties>
+                      <SubComponents>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField5">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="2nd Quarter"/>
+                            <Property name="captionWidth" type="int" value="110"/>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr2discduemonth"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField6">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="-"/>
+                            <Property name="captionWidth" type="int" value="15"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr2discdueday"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XLabel" name="xLabel3">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="(mm-dd)"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                      </SubComponents>
+                    </Container>
+                    <Container class="com.rameses.rcp.util.FormPanel" name="formPanel8">
+                      <Properties>
+                        <Property name="addCaptionColon" type="boolean" value="false"/>
+                        <Property name="caption" type="java.lang.String" value="-"/>
+                        <Property name="captionBorder" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                          <Border info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
+                            <EmptyBorder/>
+                          </Border>
+                        </Property>
+                        <Property name="orientation" type="java.lang.String" value="HORIZONTAL"/>
+                        <Property name="padding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                          <Insets value="[1, 5, 5, 5]"/>
+                        </Property>
+                        <Property name="showCaption" type="boolean" value="false"/>
+                      </Properties>
+                      <SubComponents>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField9">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="3rd Quarter"/>
+                            <Property name="captionWidth" type="int" value="110"/>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr3discduemonth"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField10">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="-"/>
+                            <Property name="captionWidth" type="int" value="15"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr3discdueday"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XLabel" name="xLabel5">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="(mm-dd)"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                      </SubComponents>
+                    </Container>
+                    <Container class="com.rameses.rcp.util.FormPanel" name="formPanel11">
+                      <Properties>
+                        <Property name="addCaptionColon" type="boolean" value="false"/>
+                        <Property name="caption" type="java.lang.String" value="-"/>
+                        <Property name="captionBorder" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                          <Border info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
+                            <EmptyBorder/>
+                          </Border>
+                        </Property>
+                        <Property name="orientation" type="java.lang.String" value="HORIZONTAL"/>
+                        <Property name="padding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                          <Insets value="[1, 5, 5, 5]"/>
+                        </Property>
+                        <Property name="showCaption" type="boolean" value="false"/>
+                      </Properties>
+                      <SubComponents>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField13">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="4th Quarter"/>
+                            <Property name="captionWidth" type="int" value="110"/>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr4discduemonth"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField14">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="-"/>
+                            <Property name="captionWidth" type="int" value="15"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr4discdueday"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XLabel" name="xLabel7">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="(mm-dd)"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                      </SubComponents>
+                    </Container>
+                  </SubComponents>
+                </Container>
+                <Component class="javax.swing.JLabel" name="jLabel1">
+                  <Properties>
+                    <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                      <Font name="Tahoma" size="11" style="1"/>
+                    </Property>
+                    <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
+                      <Color blue="0" green="0" red="99" type="rgb"/>
+                    </Property>
+                    <Property name="text" type="java.lang.String" value="* Blank setting references the end of quarter as due date"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JLabel" name="jLabel2">
+                  <Properties>
+                    <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                      <Font name="Tahoma" size="11" style="1"/>
+                    </Property>
+                    <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
+                      <Color blue="0" green="0" red="99" type="rgb"/>
+                    </Property>
+                    <Property name="text" type="java.lang.String" value="* Discount is applied on or before the specified due date"/>
+                  </Properties>
+                </Component>
+              </SubComponents>
+            </Container>
+            <Container class="javax.swing.JPanel" name="jPanel3">
+              <Constraints>
+                <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
+                  <JTabbedPaneConstraints tabName="Penalty Due Dates Setting">
+                    <Property name="tabTitle" type="java.lang.String" value="Penalty Due Dates Setting"/>
+                  </JTabbedPaneConstraints>
+                </Constraint>
+              </Constraints>
+
+              <Layout>
+                <DimensionLayout dim="0">
+                  <Group type="103" groupAlignment="0" attributes="0">
+                      <Group type="102" alignment="0" attributes="0">
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Component id="formPanel13" alignment="0" min="-2" pref="349" max="-2" attributes="1"/>
+                              <Component id="jLabel6" alignment="0" min="-2" pref="468" max="-2" attributes="0"/>
+                              <Component id="jLabel4" alignment="0" pref="468" max="32767" attributes="1"/>
+                          </Group>
+                          <EmptySpace max="-2" attributes="0"/>
+                      </Group>
+                  </Group>
+                </DimensionLayout>
+                <DimensionLayout dim="1">
+                  <Group type="103" groupAlignment="0" attributes="0">
+                      <Group type="102" alignment="0" attributes="0">
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Component id="formPanel13" min="-2" pref="129" max="-2" attributes="0"/>
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Component id="jLabel6" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace pref="110" max="32767" attributes="0"/>
+                      </Group>
+                  </Group>
+                </DimensionLayout>
+              </Layout>
+              <SubComponents>
+                <Container class="com.rameses.rcp.util.FormPanel" name="formPanel13">
+                  <Properties>
+                    <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                      <Border info="org.netbeans.modules.form.compat2.border.LineBorderInfo">
+                        <LineBorder>
+                          <Color PropertyName="color" blue="99" green="99" red="99" type="rgb"/>
+                        </LineBorder>
+                      </Border>
+                    </Property>
+                    <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                      <Dimension value="[325, 106]"/>
+                    </Property>
+                  </Properties>
+                  <SubComponents>
+                    <Container class="com.rameses.rcp.util.FormPanel" name="formPanel15">
+                      <Properties>
+                        <Property name="addCaptionColon" type="boolean" value="false"/>
+                        <Property name="caption" type="java.lang.String" value="-"/>
+                        <Property name="captionBorder" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                          <Border info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
+                            <EmptyBorder/>
+                          </Border>
+                        </Property>
+                        <Property name="orientation" type="java.lang.String" value="HORIZONTAL"/>
+                        <Property name="padding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                          <Insets value="[1, 5, 5, 5]"/>
+                        </Property>
+                        <Property name="showCaption" type="boolean" value="false"/>
+                      </Properties>
+                      <SubComponents>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField19">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="1st Quarter"/>
+                            <Property name="captionWidth" type="int" value="110"/>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr1intduemonth"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField20">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="-"/>
+                            <Property name="captionWidth" type="int" value="15"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr1intdueday"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XLabel" name="xLabel10">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="(mm-dd)"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                      </SubComponents>
+                    </Container>
+                    <Container class="com.rameses.rcp.util.FormPanel" name="formPanel18">
+                      <Properties>
+                        <Property name="addCaptionColon" type="boolean" value="false"/>
+                        <Property name="caption" type="java.lang.String" value="-"/>
+                        <Property name="captionBorder" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                          <Border info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
+                            <EmptyBorder/>
+                          </Border>
+                        </Property>
+                        <Property name="orientation" type="java.lang.String" value="HORIZONTAL"/>
+                        <Property name="padding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                          <Insets value="[1, 5, 5, 5]"/>
+                        </Property>
+                        <Property name="showCaption" type="boolean" value="false"/>
+                      </Properties>
+                      <SubComponents>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField23">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="2nd Quarter"/>
+                            <Property name="captionWidth" type="int" value="110"/>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr2intduemonth"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField24">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="-"/>
+                            <Property name="captionWidth" type="int" value="15"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr2intdueday"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XLabel" name="xLabel12">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="(mm-dd)"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                      </SubComponents>
+                    </Container>
+                    <Container class="com.rameses.rcp.util.FormPanel" name="formPanel21">
+                      <Properties>
+                        <Property name="addCaptionColon" type="boolean" value="false"/>
+                        <Property name="caption" type="java.lang.String" value="-"/>
+                        <Property name="captionBorder" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                          <Border info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
+                            <EmptyBorder/>
+                          </Border>
+                        </Property>
+                        <Property name="orientation" type="java.lang.String" value="HORIZONTAL"/>
+                        <Property name="padding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                          <Insets value="[1, 5, 5, 5]"/>
+                        </Property>
+                        <Property name="showCaption" type="boolean" value="false"/>
+                      </Properties>
+                      <SubComponents>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField27">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="3rd Quarter"/>
+                            <Property name="captionWidth" type="int" value="110"/>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr3intduemonth"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField28">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="-"/>
+                            <Property name="captionWidth" type="int" value="15"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr3intdueday"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XLabel" name="xLabel14">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="(mm-dd)"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                      </SubComponents>
+                    </Container>
+                    <Container class="com.rameses.rcp.util.FormPanel" name="formPanel24">
+                      <Properties>
+                        <Property name="addCaptionColon" type="boolean" value="false"/>
+                        <Property name="caption" type="java.lang.String" value="-"/>
+                        <Property name="captionBorder" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                          <Border info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
+                            <EmptyBorder/>
+                          </Border>
+                        </Property>
+                        <Property name="orientation" type="java.lang.String" value="HORIZONTAL"/>
+                        <Property name="padding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                          <Insets value="[1, 5, 5, 5]"/>
+                        </Property>
+                        <Property name="showCaption" type="boolean" value="false"/>
+                      </Properties>
+                      <SubComponents>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField31">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="4th Quarter"/>
+                            <Property name="captionWidth" type="int" value="110"/>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr4intduemonth"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XNumberField" name="xNumberField32">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="-"/>
+                            <Property name="captionWidth" type="int" value="15"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                            <Property name="fieldType" type="java.lang.Class" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                              <Connection code="Integer.class" type="code"/>
+                            </Property>
+                            <Property name="name" type="java.lang.String" value="entity.duedates.qtr4intdueday"/>
+                            <Property name="pattern" type="java.lang.String" value="00"/>
+                            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                              <Dimension value="[40, 19]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                        <Component class="com.rameses.rcp.control.XLabel" name="xLabel16">
+                          <Properties>
+                            <Property name="caption" type="java.lang.String" value="(mm-dd)"/>
+                            <Property name="cellPadding" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                              <Insets value="[0, 5, 0, 0]"/>
+                            </Property>
+                          </Properties>
+                        </Component>
+                      </SubComponents>
+                    </Container>
+                  </SubComponents>
+                </Container>
+                <Component class="javax.swing.JLabel" name="jLabel4">
+                  <Properties>
+                    <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                      <Font name="Tahoma" size="11" style="1"/>
+                    </Property>
+                    <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
+                      <Color blue="0" green="0" red="99" type="rgb"/>
+                    </Property>
+                    <Property name="text" type="java.lang.String" value="* Blank setting references the end of quarter as due date"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JLabel" name="jLabel6">
+                  <Properties>
+                    <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                      <Font name="Tahoma" size="11" style="1"/>
+                    </Property>
+                    <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
+                      <Color blue="0" green="0" red="99" type="rgb"/>
+                    </Property>
+                    <Property name="text" type="java.lang.String" value="* Penalty is applied after the specified due date"/>
+                  </Properties>
+                </Component>
+              </SubComponents>
+            </Container>
+          </SubComponents>
+        </Container>
+      </SubComponents>
+    </Container>
+  </SubComponents>
+</Form>

@@ -1,0 +1,62 @@
+package etracs2.rpt.billing.facts;
+
+declare CurrentYearFact
+        factname  : String
+	year  : Integer
+	qtr   : Integer
+	month : Integer
+	day   : Integer
+end
+
+declare RPTLedgerFact
+    rptledgerid             : String
+    factname                : String
+    firstitem               : Boolean
+    ledgerid                : String
+    rulename                : String
+    tdno                    : String 
+    year                    : Integer
+    qtr                     : Integer 
+    assessedvalue           : Double
+    txntype                 : String 
+    rputype                 : String 
+    classid                 : String
+    actualuseid             : String
+    numberofmonthsfromqtr   : Integer
+    numberofmonthsfromjan   : Integer
+    firstqtrpaidontime      : Boolean
+    qtrlypaymentavailed     : Boolean
+	quarterlyinstallmentpaidontime : Boolean
+    backtax                 : Boolean 
+    fullpayment             : Boolean 
+    advancepayment          : Boolean 
+    lastyearpaid            : Integer
+    lastqtrpaid             : Integer 
+
+    revtype                 : String
+    basic                   : Double
+    basicint 	            : Double
+    basicdisc   	    : Double
+    sef                     : Double
+    sefint                  : Double
+    sefdisc                 : Double
+    
+    basicacctid             : String 
+    basicintacctid          : String 
+    sefacctid               : String 
+    sefintacctid            : String 
+
+    partialbasic            : Double
+    partialsef              : Double	
+
+    varlist                 : java.util.Map
+    expr                    : String 
+end     
+
+
+
+declare AssessedValueFact
+ rptledgerid   : String
+ year          : Integer
+ assessedvalue : Double
+ end

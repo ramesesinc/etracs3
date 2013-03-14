@@ -1,0 +1,277 @@
+<workunit>
+    <invokers>
+        <invoker type="collection" caption="General Collection" afid="51" appcode="general_collection"  />
+        <invoker type="collection" caption="General Collection" afid="0016" appcode="general_collection"  />
+        <invoker type="collection" caption="General Collection" afid="907" appcode="general_collection"  />
+        <invoker type="collection" caption="General Collection" afid="0017" appcode="general_collection"  />
+        <invoker type="tc:general_collection" action="init" caption="General Collection" afid="51"  />
+        <invoker type="tc:general_collection" action="init" caption="General Collection" afid="0016" />
+        <invoker type="tc:general_collection" action="init" caption="General Collection" afid="907"  />
+        <invoker type="tc:general_collection" action="init" caption="General Collection" afid="0017" />
+        <invoker type="inquiry:tc:general_collection" action="initInquiry" caption="Inquiry" />
+        
+        <invoker type="formActions" action="doNew" caption="New" mnemonic="n" shortcut="ctrl N" visibleWhen="#{mode == 'view' and txnmode != null}" icon="images/add.png"/>
+        <invoker type="formActions" action="back" caption="Back" mnemonic="b"  immediate="true" visibleWhen="#{mode == 'create'}" icon="images/back.png"/>
+        <invoker type="formActions" action="create" caption="Save" mnemonic="s" shortcut="ctrl S" visibleWhen="#{mode == 'create'}" icon="images/save.png"/>
+        <invoker type="formActions" action="update" caption="Save" mnemonic="s" shortcut="ctrl S" visibleWhen="#{mode == 'edit'}" icon="images/save.png"/>
+        <invoker type="formActions" action="doPrint" caption="Print" mnemonic="p" shortcut="ctrl P" visibleWhen="#{mode == 'view'}" />
+        <invoker type="formActions" action="doPrintDetail" caption="Print Detail" mnemonic="d" shortcut="ctrl P" visibleWhen="#{mode == 'view'}" />
+        <invoker type="formActions" action="doVoid" caption="Void" mnemonic="v" visibleWhen="#{mode == 'view' and entity.voided == 0}" icon="images/doc-void.png"/>
+
+        <invoker type="receipt.actions:tc:general_collection" action="edit" caption="Edit" mnemonic="e" shortcut="ctrl E" target="popup" icon="images/edit.png"/>
+        <invoker type="receipt.actions:tc:general_collection" action="doPrint" caption="Print" mnemonic="p" shortcut="ctrl P" />
+        <invoker type="receipt.actions:tc:general_collection" action="doPrintDetail" caption="Print Detail" mnemonic="d" shortcut="ctrl P" />
+        <invoker type="receipt.actions:tc:general_collection" action="doVoid" caption="Void" mnemonic="v"  icon="images/doc-void.png"/>   
+    </invokers>
+    <code>
+<![CDATA[
+
+    import com.rameses.rcp.common.*
+    import com.rameses.rcp.annotations.*
+    import com.rameses.osiris2.client.*
+    import com.rameses.osiris2.reports.*
+    import etracs2.groovy.*
+    import etracs2.tc.groovy.*
+    import java.rmi.server.UID
+
+    class GeneralCollectionController extends AbstractCollectionController
+    {
+        @Service('ReceiptService')
+        def svc
+        
+        @Service('ReceiptHtmlService')
+        def htmlSvc
+        
+        @Service('ReportParameterService')
+        def svcParams;
+        
+        def listItem
+        def message = ''
+        def selectedItem
+        
+        def getParameters() { 
+            def params = svcParams.getStandardParameter( OsirisContext.env.USERNAME ); 
+            params.listSize = entity.items.size()
+            return params 
+        }
+        def getService() { return svc }
+        def getHtmlService() { return htmlSvc }
+        def getCollectionTitle() { return 'General Collection' }
+        
+        def getAllowGeneralCollectionDiscount() {
+            return svc.allowGeneralCollectionDiscount()
+        }
+        
+        void init() {
+            super.init()
+            entity.doctype = 'MISC'
+        }
+        
+        void newRecord() {
+            init()
+            listHandler.load()
+            paymentSummary.handle.reload()
+        }
+        
+        def edit() {
+            super.edit()
+            rebuildItemAcctField()
+            return 'default'
+        }
+        
+        void rebuildItemAcctField() {
+            entity.items.each {
+                it.acct = [
+                    objid     : it.acctid,
+                    acctno    : it.acctno,
+                    accttitle : it.accttitle,
+                    fundid    : it.fundid,
+                    fundname  : it.fundname,
+                ]
+            }
+        }
+        
+        
+        /* ------------------------------------------------------------
+        * LIST SUPPORT
+        -------------------------------------------------------------- */
+        def allowAmountEdit = { item ->
+            if( item.acct?.amounttype == 'FIX' ) return false
+            if( item.acct?.amounttype == 'FIXUNIT' ) return false
+            return true
+        } as Map
+        
+        def allowQtyEdit = { item ->
+            return ( item.acct?.amounttype == 'FIXUNIT' )
+        } as Map
+        
+        def allowDiscountEdit = { item ->
+            if( item.acct?.allowdiscount == 1 || item.acct?.allowdiscount == true  ) 
+                return true
+            return false 
+        } as Map
+    
+        def incomeAcctLookup = InvokerUtil.lookupOpener( 'incomeacct:lookup', [:] )
+        
+        def getDiscountTypes() {
+            return svc.getDiscountTypes()
+        }
+        
+        def listHandler = [
+            getColumns : {
+                def cols = [
+                    new Column( name:'acct', caption:'Account*', editable:true, type:'lookup', handler:incomeAcctLookup, expression: '#{accttitle}', width:600 ),
+                    new Column( name:'qty', caption:'Qty', editableWhen:'#{root.allowQtyEdit[item]}', type:'integer', alignment: 'right', minWidth: 30),
+                    
+                ]
+                
+                if( svc.allowGeneralCollectionDiscount() && af?.objid == '51' ) {
+                    cols.add( new Column( name:'baseamount', caption:'Amount*', type:'decimal', editableWhen:'#{root.allowAmountEdit[item]}', width:150 ) )
+                    cols.add( new Column(name:'discounttype', caption:'Discount Type', type:'combo', items:discountTypes , editableWhen:'#{root.allowDiscountEdit[item]}', expression:'#{objid}', width:200 ) )
+                    cols.add( new Column( name:'discount', caption:'Discount', type:'decimal', width:150 ) )
+                    cols.add( new Column( name:'amount', caption:'Sub-total', type:'decimal', width:150 ) )
+                }
+                else {
+                    cols.add( new Column( name:'amount', caption:'Amount*', type:'decimal', editableWhen:'#{root.allowAmountEdit[item]}', width:150 ) )
+                }
+
+                cols.add( new Column( name:'remarks', caption:'Remarks', editable:true, width:300 ) ) 
+                return cols
+            },
+            fetchList  : { return entity.items },
+            createItem : { return [:] },
+            validate   : { 
+                try {
+                    message = ''
+                    validate(it?.item) 
+                }
+                catch ( e ) {
+                    message = e.message
+                    throw e
+                }
+            },
+            onAddItem  : { item -> 
+                //updateIncomeAcctInfo( item )
+                item.objid = 'RI' + new UID()
+                entity.items.add( item ) 
+                updateItemInfo()
+            },
+            onColumnUpdate : { item, colName ->
+                if( colName =='acct' )  {
+                    updateIncomeAcctInfo( item )
+                }
+                else if( colName == 'qty' ) {
+                    if( item.qty <= 0 ) item.qty = 1
+                    item.baseamount = item.acct.defaultvalue * item.qty 
+                    item.amount = item.baseamount
+                }
+                else if( colName == 'amount' ) {
+                    item.baseamount = item.amount 
+                }
+                else if( colName == 'discounttype' ) {
+                    item.discounttypeid = item.discounttype.objid 
+                }
+                
+                if( item.baseamount == null ) item.baseamount = 0.0
+                if( item.discounttype == null )
+                    item.discount = 0.0
+                else 
+                    item.discount = item.baseamount - ( item.baseamount * item.discounttype.rate / 100.0 )
+                item.amount = item.baseamount - item.discount
+                updateItemInfo()
+            },
+            onRemoveItem  : { item ->
+                if( MsgBox.confirm("Delete selected item?") ) {
+                    entity.items.remove( item )
+                    updateItemInfo()
+                    message = ''
+                    binding.refresh('message')
+                }
+            },
+        ] as SubListModel
+
+        void updateItemInfo() {
+            entity.info.amount = calculateAmountDue()
+            def payments = []
+            payments.addAll( entity.payments )
+            updatePaymentInfo( payments )
+            calculateChange()
+            binding.refresh('entity.info.*')       
+        }
+
+        void validate( item ) {
+            required( 'Account', item.acct )
+            required( 'Amount', item.amount)
+            if( item.amount <= 0.0 ) throw new Exception('Amount must be greater than zero.')
+            if( item.discount > 0.0 && item.discounttypeid == null) throw new Exception('Discount Type is required.')
+        }
+
+        void updateIncomeAcctInfo( item ) {
+            item.acctid = item.acct?.objid
+            item.acctno = item.acct?.acctno
+            item.accttitle = item.acct?.accttitle
+            item.fundid = item.acct?.fundid
+            item.fundname = item.acct?.fundname
+            item.amount = item.acct?.defaultvalue
+            
+            if( item.acct?.amounttype == 'FIXUNIT'  || item.acct?.amounttype == 'FIX') {
+                item.qty = 1
+                if( item.acct ) {
+                    item.baseamount = item.acct.defaultvalue * item.qty 
+                    item.amount = item.baseamount
+                }
+            }
+            if (item.acct?.amounttype == 'FIX' ) item.qty = null 
+        }
+
+        void required( name, value ) {
+            if( ! value ) {
+                throw new Exception(name + ' is required.')
+            }
+        }
+        
+        int parseInt( value ) {
+            try {
+                return Integer.parseInt( value )
+            }
+            catch( e ) {
+                return 1 
+            }
+        }
+        
+        /*-------------------------------------------
+         *  COLLECTION GROUP SUPPORT
+         *-------------------------------------------*/
+         
+         @Service('CollectionGroupService')
+         def colgroupSvc
+         
+         def collectionGroupLookup = InvokerUtil.lookupOpener('collectiongroup:lookup', [:])
+         
+         void setCollectionGroup( cg ) {
+            def items = colgroupSvc.getIncomeAccounts( cg )
+            if( items ) {
+                items.each { it ->
+                    if( !entity.items.find{ ri-> ri.acctid == it.objid } ) {
+                        def rctitem = [:]
+                        rctitem.acct = it
+                        updateIncomeAcctInfo( rctitem )
+                        rctitem.amount = rctitem.amount ? rctitem.amount : 0.00 
+                        entity.items.add( rctitem )
+                    }
+                }
+            }
+            updateItemInfo()
+            listHandler.refresh()
+         }
+
+    }
+]]>        
+    </code>
+    <pages>
+        <page template="etracs2.tc.collection.GeneralCollectionPage"/>
+        <page name="view" template="etracs2.tc.collection.CollectionViewPage"/>
+        <page name="html" template="etracs2.tc.HtmlPage"/>
+    </pages>
+</workunit>
+

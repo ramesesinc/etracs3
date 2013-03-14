@@ -1,0 +1,178 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/report/bplo" action="init" caption="Business Delinquency Listing" target="window" index="10" role="BP_REPORTS" permission="bpreport.delinquency" />
+        <invoker type="bpreport" action="init" opener="bpdelinquency" caption="Business Delinquency Listing" target="window" index="10" role="BP_REPORTS" permission="bpreport.delinquency" />
+        <invoker type="bpreport.bpdelinquency"    action="init" caption="Business Delinquency Listing"  target="window" />
+        
+        <invoker type="formActions"     action="_close" caption="Back" mnemonic="b" shortcut="ctrl + B" icon="images/back.png"/>
+        <!-- 
+        <invoker type="formActions"     action="print" caption="Print" mnemonic="p" shortcut="ctrl + P" icon="images/doc-view.png"/>
+        -->
+        <invoker type="formActions"     action="preview" caption="Preview" mnemonic="v"             icon="images/doc-view.png"/>
+        
+        <invoker type="previewActions"  action="back" caption="Back" icon="images/back.png" immediate="true" />
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+import com.rameses.osiris2.reports.*;
+import com.rameses.rcp.framework.TaskManager;
+
+class BPDelinquencyController
+{
+    @Binding
+    def binding
+    
+    @Service("ReportParameterService")
+    def svcParams;
+    
+    @Service('BPReportService') 
+    def svc 
+    
+    def barangay
+    def reportdata
+    def msg 
+    def taskmgr
+    def mode 
+    
+    void init() {
+        mode = 'init' 
+        reportdata = [items:[]]
+        taskmgr = new TaskManager()
+    }
+    
+    def updateMessage = { msg ->
+        this.msg = msg
+        binding.refresh('msg')
+    }
+    
+    def onfinish = {
+        mode = 'init' 
+        if( reportdata.items ) {
+            generateReport()
+            binding.fireNavigation('preview')
+        }
+        else {
+            MsgBox.alert('No records found.')
+        }
+    }
+    
+    def reportname
+    def quarterly
+    void preview() {
+        mode = 'preview' 
+        reportdata.items = []
+        taskmgr.addTask( new DelinquencyTask( reportdata:reportdata, svc:svc, barangay:barangay, updateMessage:updateMessage, onfinish:onfinish ) );
+        taskmgr.start()
+    }
+    
+    def getReport(){
+        return ( quarterly ? bpquarterlydelinquency : bpdelinquency )
+    }
+    
+    def bpquarterlydelinquency = [
+        getReportName : { return 'etracs2/bp/report/bpquarterlydelinquency/bpquarterlydelinquency.jasper' },
+        getReportData : { return reportdata.items },
+        getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ); }
+    ] as ReportModel
+    
+    def bpdelinquency = [
+        getReportName : { return 'etracs2/bp/report/bpdelinquency/bpdelinquency.jasper' },
+        getReportData : { return reportdata.items },
+        getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ); }
+    ] as ReportModel
+    
+    void generateReport() {
+        report.viewReport()
+    }
+    
+    void print(){
+        generateReport()
+        ReportUtil.print( report.report, true )
+    }
+        
+    def back() {
+        return 'default' 
+    }
+    
+    List getBarangaylist() {
+        return svc.getBarangayList()
+    }
+    
+}
+
+class DelinquencyTask extends com.rameses.rcp.common.Task {
+    def reportdata
+    def svc 
+    def ended = false
+    def cancelled = false 
+    def barangay 
+    
+    def updateMessage   //handler
+    def onfinish        //handler 
+    
+    
+    
+    public boolean accept() {
+       return !ended
+    }
+    
+    public boolean isEnded() {
+        return ended
+    }
+
+    public void execute() {
+        updateMessage('Searching delinquent ledgers...')
+        def taxpayerlist = svc.getApplicationForDelinquencyListing( barangay?.barangayid )
+        
+        int i = 1
+        taxpayerlist.each{ taxpayer -> 
+            try {
+                updateMessage( 'Please wait while processing taxpayer ' + i + '.')            
+                def billing = createBilling( taxpayer, barangay )
+                def delinquencylist = svc.buildDelinquency( billing )
+                if( delinquencylist ) {
+                    reportdata.items.addAll( delinquencylist )
+                }
+                try { Thread.sleep( 20 ) } catch( e ) { }
+                i++
+            }
+            catch( ex ) {
+                ex.printStackTrace()
+            }
+        }
+        reportdata.items.sort{ a, b ->
+            def akey = a.iyear + '-' + a.taxpayername 
+            def bkey = b.iyear + '-' + b.taxpayername
+            return akey <=> bkey
+        }
+        ended = true 
+        updateMessage('')
+        onfinish()
+    }
+    
+    def createBilling( taxpayer, barangay ) {
+        return [
+            info  : [ 
+                applicationid : taxpayer.objid, 
+                taxpayerid : taxpayer.taxpayerid,
+                taxpayername : taxpayer.taxpayername,
+                taxpayeraddress : taxpayer.taxpayeraddress,
+                barangayid  : barangay?.barangayid,
+            ]
+        ]
+    }
+}
+
+
+]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.bp.report.ui.BPDelinquencyInitPage" />
+        <page name="preview" template="etracs2.common.PreviewPage" />
+    </pages>
+</workunit>

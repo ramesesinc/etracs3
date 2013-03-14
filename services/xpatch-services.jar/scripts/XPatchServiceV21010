@@ -1,0 +1,87 @@
+import com.rameses.common.*
+import com.rameses.annotations.*
+
+public class XPatchServiceV21010
+{
+	@PersistenceContext('main')
+	def em
+	
+	@PersistenceContext('system')
+	def em_sys
+	
+	@ProxyMethod 
+	public List getRemittanceList() {
+		return em.sqlContext.createQuery('SELECT objid FROM remittance').resultList 
+	}
+	
+	@ProxyMethod
+	public void updateRemittanceDenomination( objid ) {
+		println 'Processing Remittance ' + objid 
+		def rem = em.sqlContext.createQuery('SELECT info FROM xremittance WHERE objid = $P{objid}')
+						.setParameter('objid', objid)
+						.singleResult
+		if( ! rem ) return 
+		def info = em.serializer.read( rem.info )
+		
+		em.sqlContext.createExecutor('UPDATE remittance SET denominations = $P{denominations} WHERE objid = $P{objid}')
+				.setParameter('denominations', em.serializer.write(info.denominations))
+				.setParameter('objid', objid)
+				.execute()
+	}
+	
+	
+	
+	@ProxyMethod 
+	public List getLiquidationList() {
+		return em.sqlContext.createQuery('SELECT objid FROM liquidation').resultList 
+	}
+	
+	@ProxyMethod
+	public void updateLiquidationDenomination( objid ) {
+		println 'Processing Liquidation ' + objid 
+		def rem = em.sqlContext.createQuery('SELECT info FROM xliquidation WHERE objid = $P{objid}')
+						.setParameter('objid', objid)
+						.singleResult
+		if( ! rem ) return 
+		def info = em.serializer.read( rem.info )
+		
+		em.sqlContext.createExecutor('UPDATE liquidation SET denominations = $P{denominations} WHERE objid = $P{objid}')
+				.setParameter('denominations', em.serializer.write(info.denominations))
+				.setParameter('objid', objid)
+				.execute()
+	}
+	
+	@ProxyMethod
+	public void insertBPTask(host, context) {
+		def sql = '''
+			insert into sys_task 
+				(
+					id, appcontext, apphost, service, servicetype, method, 
+					startdate, currentdate, interval, description 
+				)
+			values
+				(
+					$P{id}, $P{appcontext}, $P{apphost}, $P{service}, $P{servicetype}, $P{method}, 
+					$P{startdate}, $P{currentdate}, $P{interval}, $P{description} 
+				)
+		''';
+		
+		def param = [
+			id: 'BPApplicationTask',
+			description: 'Update bp status to expired',
+			service: 'BPRenewalSched', 
+			method : 'updateExpiredApplication',
+			servicetype: 'Service',
+			apphost:	host,
+			appcontext: context, 
+			startdate : java.sql.Timestamp.valueOf( '2012-12-01 00:00:00' ),
+			currentdate : java.sql.Timestamp.valueOf( '2012-12-01 00:00:00' ),
+			interval: 1d
+		]
+		
+		em_sys.sqlContext.createExecutor( sql).setParameters( param).execute();
+		em_sys.sqlContext.createExecutor( 'insert into sys_task_suspended( id) values( $P{id} ) ')
+				.setParameter( 'id', param.id)
+				.execute();
+	}
+}

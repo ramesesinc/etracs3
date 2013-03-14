@@ -1,0 +1,133 @@
+<workunit>
+    <invokers>
+        <invoker type="quick_launcher" code="ACCT01" action="create" caption="Bank" role="MASTER_ENCODER" permission="incomeaccount.create" target="window" />
+        <invoker type="incomeaccount_create" action="create" caption="Income Account" target="window"/>
+        <invoker type="incomeaccount_open" action="open" caption="Income Account" target="window"/>
+        
+        <invoker type="formActions" action="approve" shortcut="ctrl A" visibleWhen="#{mode == 'read' and entity.docstate=='DRAFT'}" immediate="true" caption="Approve" mnemonic="d" icon="images/doc-approve.png"  />
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+import java.rmi.server.UID
+
+class IncomeAcctController extends com.rameses.client.ui.common.SinglePageCRUD
+{   
+    @Service("IncomeAcctGroupService")
+    def groupSvc
+
+    @Service('IncomeAcctService')
+    def svc
+    
+    String serviceName = 'IncomeAcctService'
+    String objectName  = 'incomeaccount'
+    String getCreateFocusComponent(){ return 'entity.acctno' }
+    String getEditFocusComponent(){ return 'entity.acctno' }
+    
+    def ngas
+    def ngassubacct
+    def sre 
+    def sresubacct
+    
+    void approve(){
+        if( MsgBox.confirm('Approve record?') ){
+            entity = service.approve( entity )
+        }
+    }
+    
+    String open() {
+        super.open()
+        ngas = [acctid:entity.ngasid, acctcode:entity.ngascode, accttitle:entity.ngastitle]
+        ngassubacct = [acctid:entity.ngassubacctid, acctcode:entity.ngassubacctcode, accttitle:entity.ngassubaccttitle]
+        sre = [acctid:entity.sreid, acctcode:entity.srecode, accttitle:entity.sretitle]
+        sresubacct = [acctid:entity.sresubacctid, acctcode:entity.sresubacctcode, accttitle:entity.sresubaccttitle]
+        return null
+    }
+    
+    def createObject() {
+        ngas        = null
+        ngassubacct = null
+        sre         = null
+        sresubacct  = null
+        return [
+            docstate      : 'DRAFT',
+            defaultvalue  : 0.0,
+            allowdiscount : 0,
+        ]
+    }
+    
+    def getFundList() {
+        def fund = svc.getFundList();
+        return fund.fundname;
+    }
+    
+    def getSystemTypeList() {
+        return svc.getSystemTypeList();
+    }
+    
+    def getAmountTypeList() {
+        return ['FIX', 'FIXUNIT'];
+    }
+    
+    def getLookupNGAS() {
+        return InvokerUtil.lookupOpener("account:lookup.ngas", [:]);        
+    }
+    
+    void setNgas( ngas )  {
+        this.ngas = ngas;
+        entity.ngasid = ngas?.objid;
+        entity.ngascode = ngas?.acctcode;
+        entity.ngastitle = ngas?.accttitle;
+    }
+    
+    def lookupNgasSubAcct() {
+        return InvokerUtil.lookupOpener("account:lookup.subngas", [searchText:entity.ngassubaccttitle, parentid:entity.ngasid, onselect:selectNgasSubAcctHandler]);        
+    }
+    
+    def selectNgasSubAcctHandler = { acct ->
+        ngassubacct = acct 
+        entity.ngassubacctid = acct?.objid;
+        entity.ngassubacctcode = acct?.acctcode;
+        entity.ngassubaccttitle = acct?.accttitle;
+        binding.refresh("entity.*|acct.*");
+    }
+    
+    def getLookupSRE() {
+        return InvokerUtil.lookupOpener("account:lookup.sre", [:]);        
+    }
+    
+    void setSre( sre ) {
+        this.sre = sre;
+        entity.sreid = sre?.objid;
+        entity.srecode  = sre?.acctcode;
+        entity.sretitle = sre?.accttitle;
+    }
+    
+    def lookupSreSubAcct() {
+        return InvokerUtil.lookupOpener("account:lookup.subsre", [searchText:entity.sresubaccttitle, parentid:entity.sreid, onselect:selectSreSubAcctHandler]);        
+    }
+    
+    def selectSreSubAcctHandler = { acct ->
+        entity.sresubacctid = acct?.objid;
+        entity.sresubacctcode = acct?.acctcode;
+        entity.sresubaccttitle = acct?.accttitle;
+        binding.refresh("entity.*");
+    }
+    
+    List getIncomeaccountgrouplist() {
+        def list = groupSvc.getList(null, null )
+        return list.collect{ it.objid }
+    }
+    
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page name="main" template="etracs2.tc.master.ui.IncomeAcctPage"/>
+    </pages>
+</workunit>

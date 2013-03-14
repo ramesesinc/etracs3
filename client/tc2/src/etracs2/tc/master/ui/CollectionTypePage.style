@@ -1,0 +1,16 @@
+"entity.*" [mode == 'read'] {
+    readonly:true;
+}
+
+"entity.*" [mode != 'read'] {
+    readonly:false;
+}
+
+"selectedItem|searchText" [mode == 'read'] {
+    enabled:true;
+}
+
+"selectedItem|searchText" [mode != 'read'] {
+    enabled:false;
+}
+

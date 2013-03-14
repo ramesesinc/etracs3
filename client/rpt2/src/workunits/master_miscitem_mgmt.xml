@@ -1,0 +1,27 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/master/rpt" caption="Miscellaneous Items" role="MASTER_ENCODER" permission="miscitem.view" target="window" index="9" />
+        <invoker type="quick_launcher" code="MISC00" caption="Miscellaneous Items" role="MASTER_ENCODER" permission="miscitem.view"/>
+    </invokers>
+    <code>
+        import com.rameses.rcp.common.*
+        import com.rameses.rcp.annotations.*
+        import com.rameses.osiris2.client.*
+        
+        class MiscItemMgmtController extends com.rameses.client.ui.common.AbstractListMgmtController
+        {
+            String serviceName = 'MiscItemsService'
+            String objectName = 'miscitem'
+            
+            Column[] getListColumns(){
+                return [
+                    new Column(name:"misccode", caption:"Code", minWidth:40),
+                    new Column(name:"miscdesc", caption:"Description", minWidth:170),
+                ]
+            }
+        }
+    </code>
+    <pages>
+        <page template="com.rameses.client.ui.template.DefaultListMgmtPage"/>
+    </pages>
+</workunit>

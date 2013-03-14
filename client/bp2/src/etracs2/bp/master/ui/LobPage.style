@@ -1,0 +1,11 @@
+"entity.*|searchAttribute|attribute|classification" [mode == 'read'] {
+    enabled:false;
+}
+
+"entity.*|searchAttribute|attribute|classification" [mode != 'read'] {
+    enabled:true;
+}
+
+"entity.name" [ mode != 'read' && entity.docstate == 'APPROVED' ]{
+    enabled:false;
+}

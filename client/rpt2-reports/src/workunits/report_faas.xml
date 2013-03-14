@@ -1,0 +1,108 @@
+<workunit>
+    <invokers>
+        <invoker type="assessorreports.td" action="init" caption="Tax Declaration" target="popup" icon="images/doc-view.png" />
+        <invoker type="assessorreports.printtd" action="print" caption="Print"/>
+        
+        <invoker type="faasmgmt.action" action="init" caption="View FAAS" index="102" icon="images/doc-view.png" target="window" visibleWhen="#{showActions == true}" permission="faasreport.view"/>
+        
+        <invoker type="formActions" action="_close" caption="Back" mnemonic="b" shortcut="ctrl B" icon="images/back.png"/>
+        
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+import com.rameses.osiris2.reports.*;
+
+class FAASReportController
+{
+    @Service("ReportParameterService")
+    def svcParams
+    
+    @Service("FAASReportService")
+    def svc
+   
+    def data
+    def faasid
+    
+    void init(){
+        if( !faasid ) throw new Exception( "Select a FAAS. $faasid " )
+        view()
+    }
+    
+    def view() {
+       data = svc.getReportData( faasid )
+       if( !data ) throw new Exception("No results found.")
+       report.viewReport()
+       return "preview"
+    }
+    
+    def report =[
+        getReportName : { return getFaasReportName() },
+        getSubReports : { return getFaasSubReports() },
+        getReportData : { return data; },
+        getParameters : { svcParams.getStandardParameter( OsirisContext.env.USERNAME ); }
+    ] as ReportModel
+    
+    def print(){
+        try {
+            init();
+            ReportUtil.print( report.report, true )
+        }catch( e ) { MsgBox.alert( e.message ) }
+        return '_close'
+    }
+    
+    def getFaasReportName() {
+        if( reportdata.rputype == 'mach' )
+            return 'etracs2/rpt/report/faas/mach/FAASMach.jasper'
+        if( reportdata.rputype == 'bldg' )
+            return 'etracs2/rpt/report/faas/bldg/FAASBldg.jasper'
+        if( reportdata.rputype == 'misc' )
+            return 'etracs2/rpt/report/faas/misc/FAASMisc.jasper'
+        return 'etracs2/rpt/report/faas/land/FAASLand.jasper'
+    }
+    
+    def getFaasSubReports() {
+        if( reportdata.rputype == 'bldg' ) {
+            return [
+                new SubReport( 'BuildingStructure', 'etracs2/rpt/report/faas/bldg/BuildingStructure.jasper'),
+                new SubReport( 'AdditionalItem', 'etracs2/rpt/report/faas/bldg/AdditionalItem.jasper'),
+                new SubReport( 'PropertyAssessment', 'etracs2/rpt/report/faas/bldg/PropertyAssessment.jasper'),
+                new SubReport( 'AnnotationList', 'etracs2/rpt/report/faas/bldg/FAASAnnotationList.jasper'),
+            ] as SubReport[]
+        }
+        if( reportdata.rputype == 'mach' ) {
+            return [
+                new SubReport( 'MachDetail', 'etracs2/rpt/report/faas/mach/MachDetail.jasper'),
+                new SubReport( 'PropertyAppraisal', 'etracs2/rpt/report/faas/mach/PropertyAppraisal.jasper'),
+                new SubReport( 'PropertyAssessment', 'etracs2/rpt/report/faas/mach/PropertyAssessment.jasper'),
+                new SubReport( 'AnnotationList', 'etracs2/rpt/report/faas/mach/FAASAnnotationList.jasper'),
+            ] as SubReport[]
+        }
+        if( reportdata.rputype == 'misc' ) {
+            return [
+                new SubReport( 'MiscPropertyAppraisal', 'etracs2/rpt/report/faas/misc/MiscPropertyAppraisal.jasper'),
+                new SubReport( 'MiscAdjustment', 'etracs2/rpt/report/faas/misc/MiscAdjustment.jasper'),
+                new SubReport( 'PropertyAssessment', 'etracs2/rpt/report/faas/misc/PropertyAssessment.jasper'),
+                new SubReport( 'AnnotationList', 'etracs2/rpt/report/faas/misc/FAASAnnotationList.jasper'),
+            ] as SubReport[]
+        }
+        
+        return [
+            new SubReport( 'LandAppraisal', 'etracs2/rpt/report/faas/land/LandAppraisal.jasper'),
+            new SubReport( 'PlantTreesAppraisal', 'etracs2/rpt/report/faas/land/PlantTreesAppraisal.jasper'),
+            new SubReport( 'LandAdjustment', 'etracs2/rpt/report/faas/land/LandAdjustment.jasper'),
+            new SubReport( 'PropertyAssessment', 'etracs2/rpt/report/faas/land/PropertyAssessment.jasper'),
+            new SubReport( 'AnnotationList', 'etracs2/rpt/report/faas/land/FAASAnnotationList.jasper'),
+        ] as SubReport[]
+    }
+}
+]]>        
+        
+    </code>
+    <pages>
+        <page name="preview" template="etracs2.common.PreviewPage" />
+    </pages>
+</workunit>

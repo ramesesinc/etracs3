@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit extends="workunits/faas.xml">
+    <invokers>
+        <invoker folderid="/explorer/txn/rpt/faas"      action="initTxn"  caption="Re-Assessment" mnemonic="t" target="window" role="APPRAISER" permission="transfer.create"  index="9"/>
+        <invoker type="faas_open.RE" action="open" caption="FAAS (Open)" mnemonic="o" shortcut="ctrl O" target="window" icon="images/open.png" role="APPRAISER" permission="faas.open" />
+        <invoker type="faas_viewprevious.RE" action="openPrevious" caption="View Previous" target="popup" icon="images/doc-view.png" />
+        <invoker type="quick_launcher" code="RE01"     action="initTxn"  caption="Re-Assessment" target="window" />
+        
+    </invokers>
+    
+<code lang="groovy">
+        
+import com.rameses.rcp.annotations.* 
+
+public class ReassessmentController extends etracs2.rpt.groovy.AbstractFAASController 
+{
+    @Service('FAASService')
+    def svc
+    
+    @Service('Var')
+    def var
+    
+    public def getSvc(){ return svc }
+    public def getVar(){ return var }
+    public def getTxnType(){ return 'RE' }
+    public def getTxnTitle(){ return 'Re-Assessment' }
+    
+    public def initFaasForTransaction() {
+        return svc.initReassessmentTransaction( getCommonInitTxnParams() )
+    }
+    
+}
+
+</code>
+<pages></pages>
+</workunit>
+
+

@@ -1,0 +1,319 @@
+import com.rameses.annotations.*
+import java.rmi.server.UID
+import com.rameses.eserver.*;
+import com.rameses.common.*;
+import java.util.concurrent.*
+import java.io.*
+
+class BatchGRService
+{
+	
+	@PersistenceContext('main')
+	def em
+    
+	@Env
+	def env
+
+    @Service('Var')
+	def var
+
+	@Service('FAASService')
+	def faasSvc
+    
+    @Service('LogService')
+    def logSvc
+    
+    @Service('LandRPUService')
+    def landRpuSvc
+    
+    @Service('BldgRPUService')
+    def bldgRpuSvc
+    
+    @Service('MachRPUService')
+    def machRpuSvc
+    
+    @Service('PlantTreeRPUService')
+    def planttreeRpuSvc
+    
+    @Service('MiscRPUService')
+    def miscRpuSvc
+	
+	@Service('ETRACSUtilService')
+	def utilSvc
+	
+	@ProxyMethod
+	public def reviseLandFaas( landfaasid, newry, memoranda ) {
+		def counter = [success:0, error:0]
+		
+		if( ! memoranda ) memoranda = 'REVISED PURSUANT TO R.A. 7160' 
+		def landfaas = reviseFaas( landfaasid, newry, memoranda, null, counter )
+		if( landfaas ) {
+			def improvements = faasSvc.getLandImprovements( landfaasid )
+			println 'Improvements -> ' + improvements.size()
+			improvements.each{ improvement ->
+				def faas = reviseFaas( improvement.objid, newry, memoranda, landfaas, counter)
+			}
+		}
+		return counter
+	}
+	
+	@ProxyMethod
+	public def reviseFaas( faasid, newry, memoranda, landfaas, counter  ) {
+		def faas = null 
+		try {
+			faas = faasSvc.open( faasid )
+			def prevtdno     = faas.info.tdno
+			def newrysetting = getRySetting( faas.rpu.rputype, newry ) 
+			def autonumber 	 = utilSvc.toBoolean( var.gr_td_autonumber, true )
+					
+			faas = initGeneralRevision( faas, 'GR', prevtdno, autonumber, newrysetting, landfaas )
+			faas.info.memoranda	= memoranda
+			faas = faasSvc.create( faas )
+			logSvc.log('REVISED','Faas', faasid)
+			println 'Successfully revised -> ' + prevtdno 
+			counter.success += 1
+			return faas 
+		}
+		catch ( e ) {
+			counter.error += 1
+			logError( faasid, newry, e ) 
+		}
+		return null
+	}		
+	
+	void logError( faasid, newry, e ) {
+		def sw = null 
+		def pw = null 
+		try {
+			em.sqlContext.createNamedExecutor('batchgr:deleteBatchGRError').setParameter('faasid', faasid).execute()
+			
+			sw = new StringWriter()
+			pw = new PrintWriter(sw)
+			e.printStackTrace( pw)
+			em.sqlContext.createNamedExecutor('batchgr:insertBatchGRError')
+					.setParameter('faasid', faasid)
+					.setParameter('ry', newry)
+					.setParameter('msg', sw.toString())
+					.execute()
+		}
+		catch( ex ) {
+			println 'Unable to Log Error for ' + faasid 
+		}
+		finally{
+			if( sw ) try{ sw.close() } catch( ex ) {}
+			if( pw ) try{ pw.close() } catch( ex ){}
+		}
+		
+	}
+	
+	
+	@ProxyMethod
+	public List getRyList( rputype ) {
+		if( !rputype || 'land'.equals( rputype ) ) {
+			return em.sqlContext.createNamedQuery('batchgr:getLandRYSetting').resultList 
+		}
+		else if( 'bldg'.equals( rputype ) ) {
+			return em.sqlContext.createNamedQuery('batchgr:getBldgRYSetting').resultList 
+		}
+		else if( 'mach'.equals( rputype ) ) {
+			return em.sqlContext.createNamedQuery('batchgr:getMachRYSetting').resultList 
+		}
+		else if( 'planttree'.equals( rputype ) ) {
+			return em.sqlContext.createNamedQuery('batchgr:getPlantTreeRYSetting').resultList 
+		}
+		else if( 'misc'.equals( rputype ) ) {
+			return em.sqlContext.createNamedQuery('batchgr:getMiscRYSetting').resultList 
+		}
+		return []
+	}
+	
+	@ProxyMethod
+	public List getLandFaasIdForRevision( newry, barangayid ) {
+		return em.sqlContext.createNamedQuery('batchgr:getLandFAASIdForRevision')
+				.setParameters([ newry:newry, barangayid:barangayid  ])
+				.resultList
+	} 
+	
+	@ProxyMethod 
+	public void validateBatchRY( newry, barangayid ) {
+		barangayid = ( barangayid ? barangayid : '%')
+		checkPendingFaasTransactions( newry, barangayid )
+		
+		def rptsetting = em.sqlContext.createNamedQuery('batchgr:getCurrentRY').singleResult 
+		if( !rptsetting ) {
+			throw new Exception('RPT Setting is not defined.')
+		}
+		if( rptsetting.ry >= newry ) {
+			throw new Exception('New Revision Year must be greater than current revision year ' + rptsetting.ry )
+		}
+		
+		//check landry setting 
+		def ry = em.sqlContext.createNamedQuery('batchgr:getRYSetting_land')
+						.setParameter('ry', newry)
+						.singleResult 
+		if( ! ry ) throw new Exception( "Land Revision Year Setting for $newry is not defined.")
+		
+		//check bldgry setting 
+		ry = em.sqlContext.createNamedQuery('batchgr:getRYSetting_bldg')
+						.setParameter('ry', newry)
+						.singleResult 
+		if( ! ry ) throw new Exception( "Building Revision Year Setting for $newry is not defined.")
+		
+		//check machry setting 
+		ry = em.sqlContext.createNamedQuery('batchgr:getRYSetting_mach')
+						.setParameter('ry', newry)
+						.singleResult 
+		if( ! ry ) throw new Exception( "Machine Revision Year Setting for $newry is not defined.")
+		
+		//check planttreery setting 
+		if ( existSetting( 'planttreerysetting') ){
+			ry = em.sqlContext.createNamedQuery('batchgr:getRYSetting_planttree')
+							.setParameter('ry', newry)
+							.singleResult 
+			if( ! ry ) throw new Exception( "Plant/Tree Revision Year Setting for $newry is not defined.")
+		}
+		
+		//check getRYSetting_misc setting 
+		if ( existSetting('miscrysetting') ) {
+			ry = em.sqlContext.createNamedQuery('batchgr:getRYSetting_misc')
+							.setParameter('ry', newry)
+							.singleResult 
+			if( ! ry ) throw new Exception( "Miscellaneous Revision Year Setting for $newry is not defined.")
+		}
+	}
+	
+	
+	@ProxyMethod 
+	public Map initGeneralRevision( faas, txntype, prevtdno, autonumber, newrysetting, landfaas ) {
+		if( !newrysetting ) {
+			throw new Exception('New RY Setting is required.')
+		}
+		
+		faas = faasSvc.initReassessmentTransaction( [faas:faas, txntype:txntype, prevtdno:prevtdno, autonumber:autonumber] )
+		if( faas.rpu.ry >= newrysetting.ry ) {
+			throw new Exception('New Revision Year must be greater than ' + faas.rpu.ry + '.' )
+		}
+		
+		def txn 			= faasSvc.resolveTxnType( txntype )
+		faas.info.txntype	= txn.txntype 
+        faas.info.txn       = txn 
+		faas.info.datacapture = false
+		faas.rpu.ry			= newrysetting.ry 
+		
+		if( landfaas ) {
+			//update pin info in case pin is renumbered
+			faas.rp.putAll( landfaas.rp )
+			faas.rpu.fullpin 	= landfaas.rp.pin + '-' + faas.rpu.suffix
+			faas.info.landfaasid = landfaas.objid 
+			faas.info.landfaastaxpayerid = landfaas.info.taxpayerid
+		}
+		
+		//recalculate due to gr 
+		def rputype = faas.rpu.rputype 
+		
+		if( 'land'.equals( rputype )  ) {
+			faas = landRpuSvc.initGeneralRevision( faas, newrysetting )
+		}
+		else if( 'bldg'.equals( rputype )  ) {
+			faas = bldgRpuSvc.initGeneralRevision( faas, newrysetting )
+		}
+		else if( 'mach'.equals( rputype )  ) {
+			faas = machRpuSvc.initGeneralRevision( faas, newrysetting )
+		}
+		else if( 'planttree'.equals( rputype )  ) {
+			faas = planttreeRpuSvc.initGeneralRevision( faas, newrysetting)
+		}
+		else if( 'misc'.equals( rputype )  ) {
+			faas = miscRpuSvc.initGeneralRevision( faas, newrysetting)
+		}
+		else {
+			throw new Exception( 'Cannot process rpu type ' + rputype + '.' )
+		}
+		
+		faas.info.tdno 		= faasSvc.generateNextTdNo( faas )
+		
+		return faas 
+		
+	}
+	
+	
+	
+	def getRySetting( rputype, newry ) {
+		if( rputype == 'land' ) {
+			return em.sqlContext.createNamedQuery('batchgr:getRYSetting_land')
+						.setParameter('ry', newry)
+						.singleResult 
+		}
+		
+		if( rputype == 'bldg' ) {
+			return em.sqlContext.createNamedQuery('batchgr:getRYSetting_bldg')
+						.setParameter('ry', newry)
+						.singleResult 
+		}
+		
+		if( rputype == 'mach' ) {
+			return em.sqlContext.createNamedQuery('batchgr:getRYSetting_mach')
+						.setParameter('ry', newry)
+						.singleResult 
+		}
+		
+		if( rputype == 'planttree' ) {
+			return em.sqlContext.createNamedQuery('batchgr:getRYSetting_planttree')
+						.setParameter('ry', newry)
+						.singleResult 
+		}
+		
+		if( rputype == 'misc' ) {
+			return em.sqlContext.createNamedQuery('batchgr:getRYSetting_misc')
+						.setParameter('ry', newry)
+						.singleResult 
+		}
+		return null 
+	}
+	
+	boolean existSetting( setting ) {
+		def list = em.sqlContext.createNamedQuery('rysetting:getSetting')
+						.setVars([setting:setting])
+						.resultList 
+		return list.size() > 0	
+	}
+	
+	void checkPendingFaasTransactions( newry, barangayid ) {
+		//check if there are still pending faases, therefore, not current or cancelled
+		def pendinglist = em.sqlContext.createNamedQuery('batchgr:getPendingFaasList')
+					.setParameter('barangayid', barangayid)
+					.setParameter('ry', newry)
+					.setMaxResults(1)
+					.resultList 
+		if( pendinglist ){
+			throw new Exception("There are still pending FAASes for approval.\nApprove or cancel these records before processing the general revision.")
+		}
+		
+		//check pending subdivisions
+		pendinglist = em.sqlContext.createNamedQuery('batchgr:getPendingSubdivisions')
+					.setMaxResults(1)
+					.resultList 
+		if( pendinglist ){
+			throw new Exception("There are still pending subdivisions.\nApprove or cancel these records before processing the general revision.")
+		}
+		
+		//check pending consolidations
+		pendinglist = em.sqlContext.createNamedQuery('batchgr:getPendingConsolidations')
+					.setMaxResults(1)
+					.resultList 
+		if( pendinglist ){
+			throw new Exception("There are still pending consolidations.\nApprove or cancel these records before processing the general revision.")
+		}
+		
+		//check pending annotations
+		pendinglist = em.sqlContext.createNamedQuery('batchgr:getPendingAnnotations')
+					.setMaxResults(1)
+					.resultList 
+		if( pendinglist ){
+			throw new Exception("There are still pending annotations.\nApprove or cancel these records before processing the general revision.")
+		}
+		
+	}
+	
+}
+

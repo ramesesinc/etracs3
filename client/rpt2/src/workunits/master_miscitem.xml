@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    
+    <invokers>
+        <invoker type="quick_launcher" code="MISC01" action="create" caption="Miscellaneous Item" role="MASTER_ENCODER" permission="miscitem.create"/>
+        <invoker type="miscitem_create" action="create" caption="Miscellaneous Item" />
+        <invoker type="miscitem_open" action="open" caption="Miscellaneous Item" />
+    </invokers>
+        
+    <code lang="groovy">
+        <![CDATA[
+        
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import java.rmi.server.UID;
+        
+        public class MiscellaneousItemController  extends com.rameses.client.ui.common.SinglePageCRUD   
+        {
+            String serviceName = "MiscItemsService"
+            String objectName  = 'miscitem'
+            String getCreateFocusComponent() { return "entity.misccode"; }
+            String getEditFocusComponent() { return "entity.misccode"; }
+        }
+        
+        
+        ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.master.ui.MiscItemPage" />
+    </pages>
+</workunit>

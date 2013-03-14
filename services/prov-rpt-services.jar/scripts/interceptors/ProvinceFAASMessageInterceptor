@@ -1,0 +1,59 @@
+import com.rameses.annotations.*
+import com.rameses.eserver.*;
+import com.rameses.common.*;
+
+class ProvinceFAASMessageInterceptor
+{
+	@PersistenceContext('main')
+	def em
+    
+	@Service('LogService')
+    def logSvc
+	
+	@Service('ProvinceFAASService')
+	def svc
+	
+	@Service('MessagingService')
+	def msgSvc
+	
+	@Service('FAASService')
+	def faasSvc
+	
+	def SCHEMA_NAME = 'faas'
+    def SCHEMA_VERSION = '1.0'
+    def LISTSCHEMA_NAME = 'faas:faaslist'
+    
+	@After(pattern='MessagingService.onMessage', eval="#{result.type.matches('faas.receive')}")
+	public void interceptOnReceive( evt ) {
+        def msg = evt.result 
+        if( msg.type == 'faas.receive') {
+			processReceiveFaas( msg )
+        }
+	}
+	
+	void processReceiveFaas( msg ) {
+		createEntity( msg )
+		def faas = msg.data.faas 
+		faas.docstate  = 'FORREVIEW'
+		faas.remote    = true 
+		if( ! svc.faasExists( faas.objid ) ) {
+			em.create( faas.schemaname, faas )
+		}
+		em.save( LISTSCHEMA_NAME, faas )
+		
+		msg.data.attachments.each { attachment -> 
+			faasSvc.saveAttachment( attachment )
+		}
+		
+		msgSvc.processedSuccessfully( msg ) 
+		logSvc.log('ONLINE-RECEIVED', 'FAAS', faas.objid);
+	}
+	
+	void createEntity( msg ) {
+		def entity = msg.data.entity 
+		em.save( entity.schemaname, entity )
+	}
+	
+}
+
+

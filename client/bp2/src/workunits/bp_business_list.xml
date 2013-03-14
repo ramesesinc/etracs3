@@ -1,0 +1,125 @@
+<workunit>
+    <invokers>
+        <invoker folderid="/explorer/txnmgmt/bplo" action="initApplication" caption="Approved Applications" role="SHARED" permission="bppermit.approvedapplications" id="approvedapplications" target="window"/>
+        <invoker folderid="/explorer/txnmgmt/bplo" action="initReleasePermit" caption="For Release Permits" role="RELEASING" permission="bppermit.forreleasepermits" id="forreleasepermits" target="window"/>
+        <invoker folderid="/explorer/txnmgmt/bplo" action="initForRenewalPermit" caption="For Renewal Applications" role="LICENSING" permission="bppermit.forrenewapplications" id="bppermit.forrewalapplications" target="window"/>
+        <invoker folderid="/explorer/txnmgmt/bplo" action="initActivePermit" caption="Active Permits" role="SHARED" permission="bppermit.activepermits" id="activepermits" target="window"/>
+        <invoker folderid="/explorer/txnmgmt/bplo" caption="Retired Applications" role="SHARED" permission="bppermit.retire" id="retiredapplications" target="window"/>
+        
+        <invoker type="home.action" category="Business" action="initApplication" caption="Approved Applications" role="SHARED" permission="bppermit.approvedapplications" id="approvedapplications" target="window" icon="images/folder.png"/>
+        <invoker type="home.action" category="Business" action="initReleasePermit" caption="For Release Permits" role="RELEASING" permission="bppermit.forreleasepermits" id="forreleasepermits" target="window" icon="images/folder.png"/>
+        <invoker type="home.action" category="Business" action="initForRenewalPermit" caption="For Renewal Applications" role="LICENSING" permission="bppermit.forrenewapplications" id="bppermit.forrewalapplications" target="window" icon="images/folder.png"/>
+        <invoker type="home.action" category="Business" action="initActivePermit" caption="Active Permits" role="SHARED" permission="bppermit.activepermits" id="activepermits" target="window" icon="images/folder.png"/>
+        <invoker type="home.action" category="Business" caption="Retired Applications" role="SHARED" permission="bppermit.retire" id="retiredapplications" target="window" icon="images/folder.png"/>
+        
+        <invoker type="formActions" action="previewApplication" mnemonic="p" shortcut="ctrl P" caption="View Application" visibleWhen="#{selectedItem != null}" icon="images/doc-view.png"/>
+        <invoker type="formActions" action="previewAssessment"  mnemonic="v" shortcut="ctrl V" caption="View Assessment" visibleWhen="#{selectedItem != null}" icon="images/doc-view.png"/>
+        <invoker type="formActions" action="open" caption="Open"   mnemonic="o" shortcut="ctrl O" visibleWhen="#{selectedItem != null}" icon="images/open.png"/>
+        <invoker type="formActions" action="renew" caption="Renew" mnemonic="r" shortcut="ctrl R"  visibleWhen="#{selectedItem != null and selectedItem.docstate == 'EXPIRED' }" icon="images/open.png" role="LICENSING" permission="bplicensing.renewtransaction"/>
+    </invokers>
+    <code>
+<![CDATA[
+
+import com.rameses.rcp.common.*;
+import com.rameses.rcp.annotations.*;
+import com.rameses.osiris2.client.*;
+
+class BusinessMgmtList
+{
+    @Binding
+    def binding;
+    
+    def mode = 'VIEW';
+    
+    @Service('BusinessMgmtService')
+    def svc;
+    
+    @Service('BPApplicationService')
+    def appSvc;
+    
+    @Service('BPHtmlService')
+    def htmlSvc;
+    
+    def txntype;
+    def docstate;
+    def searchText;
+    
+    void initApplication(){ docstate = 'APPROVED'; }
+    void initReleasePermit(){ docstate = 'PERMIT_PENDING'; }
+    void initActivePermit(){ docstate = 'ACTIVE'; }
+    void initForRenewalPermit(){ docstate = 'EXPIRED'; }
+    
+    def selectedItem;
+    def listHandler = [
+        getRows: { return 25; },
+        getColumns : {
+            return [
+                new Column(name:'docstate', caption:'Status', maxWidth:100),
+                new Column(name:'txnno', caption:'Application No.', maxWidth:160),
+                new Column(name:'permitno', caption:'Permit No.', maxWidth:160),
+                new Column(name:'tradename', caption:'Trade Name'),
+                new Column(name:'businessaddress', caption:'Business Address' ),
+                new Column(name:'taxpayername', caption:'Payer Name'),
+                new Column(name:'taxpayeraddress', caption:'Payer Address')
+            ];
+        },
+        
+        fetchList : {
+            return svc.getList( searchText, docstate, it );
+        }
+    ] as PageListModel;
+    
+    public def getHtml(){
+        def html = "";
+        if( selectedItem ) {
+            if( !selectedItem.html ){
+                try{ selectedItem.html = htmlSvc.getHtml( selectedItem.objid );
+                }catch(e){ e.printStackTrace(); }
+            }
+            html = selectedItem.html;
+        }
+        
+        if( html ) return html;
+        return 'No selected item';
+    }
+    
+    def previewApplication(){
+        return InvokerUtil.lookupOpener('bp.applicationreport', [applicationid:selectedItem.objid]);
+    }
+    
+    def previewAssessment(){
+        return InvokerUtil.lookupOpener('bp.assessmentreport', [applicationid:selectedItem.objid]);
+    }
+    
+    def retire(){ return InvokerUtil.lookupOpener('bp.retire', [applicationid: selectedItem.objid]);}
+    
+    def release(){
+        def permit = svc.openPermit( selectedItem.objid );
+        permit.mode = appSvc.open( selectedItem.objid ).txnmode
+        return InvokerUtil.lookupOpener('bp.releasepermit', [permit: permit]);
+    }
+    
+    def open(){ 
+        return selectedItem.txntype.matches('RETIRE|RETIRELOB') ? retire() : release(); 
+    }
+    
+    def renew(){
+        def application = [:];
+        application.txnmode = 'ONLINE';
+        application.txntype = 'RENEW';
+        application.docstate = 'DRAFT';
+        application.txndate = new Date();
+        application.businessid = selectedItem.businessid;
+        application.parentid = selectedItem.objid;
+        return InvokerUtil.lookupOpener('bp.createInWindow', [application: appSvc.evaluateTxnType( application )]);
+    }
+    void search(){ listHandler.load(); }
+}
+
+]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.bp.application.BusinessMmgtPage"/>
+    </pages>
+</workunit>

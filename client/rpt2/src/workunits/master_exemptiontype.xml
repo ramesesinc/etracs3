@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workunit>
+    
+    <invokers>
+        <invoker type="quick_launcher" code="ET01" action="create" caption="Exemption Types" role="MASTER_ENCODER" permission="exemptiontype.create"/>
+        <invoker type="exemptiontype_create" action="create" caption="Exemption Types" />
+        <invoker type="exemptiontype_open" action="open" caption="Exemption Types" />
+    </invokers>
+    
+    <code lang="groovy">
+        <![CDATA[
+        
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import java.rmi.server.UID;
+        
+        public class ExemptionTypeController  extends com.rameses.client.ui.common.SinglePageCRUD 
+        {
+            String serviceName = 'ExemptionTypesService'
+            String objectName  = 'exemptiontype'
+            String getCreateFocusComponent() { return "entity.exemptcode"; }
+            String getEditFocusComponent() { return "entity.exemptcode"; }
+            
+            def createObject() {
+                return [orderno : 0]
+            }
+        }
+        
+        
+        ]]>
+    </code>
+    
+    <pages>
+        <page template="etracs2.rpt.master.ui.ExemptionTypePage" />
+    </pages>
+</workunit>

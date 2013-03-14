@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+// author    : jzamora
+// copyright : Rameses Systems Inc
+// date      : 06-24-2011 
+-->
+<workunit>
+    <invokers>
+        <invoker type="rysettingmgmt.type" caption="Plant/Tree" index="40" />
+        <invoker folderid="/explorer/master/rpt/grs" caption="Plant/Tree" target="window" role="MASTER_ENCODER" permission="rysetting.view" index="515"/>
+        <invoker type="quick_launcher" code="GRY03" caption="Plant/Tree Revision Setting" index="40" />
+        
+        <invoker type="formActions" action="create" shortcut="ctrl N" immediate="true" caption="New" mnemonic="n" icon="images/doc-new.png" />
+        <invoker type="formActions" action="open" shortcut="ctrl O" visibleWhen="#{selectedItem != null }" immediate="true" caption="Open" mnemonic="e" icon="images/open.png" />
+        <invoker type="formActions" action="copy" shortcut="ctrl C" visibleWhen="#{selectedItem != null }" immediate="true" caption="Copy" mnemonic="c" icon="images/doc-new.png" />
+        <invoker type="formActions" action="delete" shortcut="ctrl D" visibleWhen="#{selectedItem != null}" immediate="true" caption="Delete" mnemonic="d" icon="images/doc-delete.png" />
+    </invokers>
+    <code lang="groovy">
+<![CDATA[        
+
+
+import com.rameses.rcp.annotations.*
+import com.rameses.rcp.common.*
+import com.rameses.osiris2.client.*
+
+public class PlantTreeRYSettingMgmtController
+{
+    @Binding
+    def binding
+    
+    @Service('PlantTreeRYSettingService')
+    def svc 
+    
+    def searchText
+    def selectedItem
+    
+    def onClose = {
+        listHandler.load() 
+    }
+    
+    def create() {
+        return InvokerUtil.lookupOpener('planttreerysetting.create', [onClose:onClose])
+    }
+    
+    def open() {
+        return InvokerUtil.lookupOpener('planttreerysetting.open', [entity:selectedItem, onClose:onClose])
+    }
+    
+    def copy() {
+        if( MsgBox.confirm('Copy revision year ' + selectedItem.ry + '?' ) ) {
+            return InvokerUtil.lookupOpener('planttreerysetting.copy', [entity:selectedItem, onClose:onClose])
+        }
+        return null
+    }
+    
+    void delete() {
+        if( selectedItem && MsgBox.confirm('Delete setting?') ) {
+            svc.remove( selectedItem.objid )
+            search()
+        }
+    }
+    
+    void search() {
+        listHandler.load()
+    }
+    
+    def listHandler = [
+        getRows    : { return 50 },
+        getColumns : { return [
+            new Column(name:'ry', caption:'Revision Year', maxWidth:150, format:'0000', alignment:'left'),
+            new Column(name:'applyagriadjustment', caption:'Apply Agricultural Adjustment Rate', type:'boolean' ),
+            new Column(name:'appliedto', caption:'Applied To'),
+        ]},
+        fetchList  : { return svc.getList( searchText ) },
+    ] as SubListModel
+}
+
+]]>
+    </code>    
+    
+    <pages>
+        <page template="etracs2.rpt.ry.RYListMgmtPage" />
+    </pages>
+</workunit>

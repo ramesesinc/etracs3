@@ -1,0 +1,28 @@
+".*" [true == true ] {
+    enabled:true;
+}
+
+"editMachine" [ selectedItem == null && selectedItem.machineid == null ] {
+    enabled:false
+}
+
+"editMachine" [ selectedItem != null && selectedItem.machineid != null ] {
+    enabled:true
+}
+
+".*" [ allowEdit == false ] {
+    enabled:false;
+}
+
+"selectedItem" [ allowEdit == false ] {
+    readonly:true;
+}
+
+"addMachine" [ allowEdit == false ] {
+    enabled:false;
+}
+
+"editMachine" [ allowEdit == false ] {
+    text:'View';
+}
+

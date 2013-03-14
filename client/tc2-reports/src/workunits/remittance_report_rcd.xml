@@ -1,0 +1,56 @@
+<workunit>
+    <invokers>
+        <invoker type="remittance_report.rcd" action="init" caption="Report of Collections and Deposits" />
+        <invoker type="formActions" action="close"  immediate="true" caption="Back" mnemonic="c" icon="images/back.png"/>
+    </invokers>
+    <code>
+        <![CDATA[
+
+        import com.rameses.rcp.common.*;
+        import com.rameses.rcp.annotations.*;
+        import com.rameses.osiris2.client.*;
+        import com.rameses.osiris2.reports.*;
+        
+        class RemittanceReportRCDController {
+        
+            @Service("RemittanceReportService")
+            def svc;
+            
+            @Service("ReportParameterService")
+            def paramSvc;
+        
+            def entity;
+            
+            void init(){
+                report.viewReport();
+            }
+        
+            def report = [
+                getReportName : { return 'etracs2/tc/report/remittance/RCD/ReportAMain.jasper' },
+                getSubReports : { 
+                    return [
+                        new SubReport( 'ReportAOtherPayments', 'etracs2/tc/report/remittance/RCD/ReportAOtherPayments.jasper'),
+                        new SubReport( 'ReportAForms', 'etracs2/tc/report/remittance/RCD/ReportAForms.jasper'),
+                        new SubReport( 'ReportNonSerialSummary', 'etracs2/tc/report/remittance/RCD/ReportNonSerialSummary.jasper'),
+                        new SubReport( 'ReportNSAForms', 'etracs2/tc/report/remittance/RCD/ReportNSAForms.jasper'),
+                        new SubReport( 'ReportADenominations', 'etracs2/tc/report/remittance/RCD/ReportADenominations.jasper'),
+                        new SubReport( 'ReportCollectionType', 'etracs2/tc/report/remittance/RCD/ReportCollectionType.jasper'),
+                        new SubReport( 'ReportCollectionSummary', 'etracs2/tc/report/remittance/RCD/ReportCollectionSummary.jasper'),
+                    ] as SubReport[]
+                },
+                getReportData : { return svc.generateRCD( entity ) }, 
+                getParameters : { return paramSvc.getStandardParameter( OsirisContext.env.USERNAME ) }
+            ] as ReportModel;
+            
+            def close() {
+                return '_close';
+            }
+        }
+
+        ]]>        
+        
+    </code>
+    <pages>
+        <page template="etracs2.tc.PreviewPage" />
+    </pages>
+</workunit>

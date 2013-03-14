@@ -1,0 +1,6 @@
+<workunit extends="workunits/rulemgmt.xml">
+    <invokers>
+        <invoker folderid="/explorer/rulemgmt/bplo" action="init" caption="BP Assessment Rules"  
+            role="RULE_AUTHOR" permission="bpassessmentrule.view" index="1" ruleset="bpassessment"/>
+    </invokers>
+</workunit>
