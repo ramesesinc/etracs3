@@ -1,0 +1,40 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+
+class InboundMessageTask
+{
+   
+    @Service(value="RemoteOutboxService", connection="province_service") 
+	def remoteOutboxSvc
+    
+	@Service('MessagingService')
+    def msgSvc
+    
+	def STATE_UNREAD = 'UNREAD'
+	def STATE_READ   = 'READ'
+	
+	def INBOX_SCHEMA_NAME = 'messaging:inbox' 
+	def OUTBOX_SCHEMA_NAME = 'messaging:outbox' 
+	
+	
+	@Schedule(interval=10)
+	public def fetchMessage( task ) {
+        try {
+            def params = [ receiver : msgSvc.getDefaultSender(), ]
+            def msglist = remoteOutboxSvc.fetchMessage(params)
+			msglist.each{ msg ->
+				println 'Processing message from ' + msg.sender  
+				//check if msg has already been fetched, check both inbox and processedinbox 
+				def oldmsg = msgSvc.getInboxMessage( msg.objid )
+				if( !oldmsg ) {
+					msgSvc.saveInboxMessage( msg )
+				}
+				remoteOutboxSvc.fetchSuccess( msg.objid )
+			}
+        }
+        catch ( e ) {
+			println 'Cannot connect to remote outbox.'
+        }
+        return true
+	}    		
+}

@@ -15,43 +15,52 @@ class EntityMessageInterceptor
 	
     @Service('EntityService')
     def entitySvc
+
+    def final REF_TYPE = 'EntityMapping'
 	
-	@After(pattern='MessagingService.onMessage') 
-	public void interceptOnReceive( evt ) {
+	@After(pattern='MessagingService.onMessage', eval="#{result.type.matches('entity.create_entity_for_mapping')}") 
+	public void interceptOnReceiveEntityCreateMapping( evt ) {
 		def msg = evt.result 
 		try {
-			if( msg.action == 'entity.create_entity_for_mapping') createEntityForMapping( msg ) 
-			else if (msg.action == 'entity.process_mapping' ) createMapping( msg )
-			else if (msg.action == 'entity.delete_mapping' ) deleteMapping( msg )
+			println 'Processing message -> ' + msg.type
+			def parententity = msg.attachment.parententity 
+			entitySvc.createEntityForMapping( parententity )
+			logSvc.log( msg.type, REF_TYPE, parententity.objid )
 			msgSvc.processedSuccessfully( msg )
 		}
 		catch( e ) {
-            println '-'*30 
-            e.printStackTrace()
-            msgSvc.errorProcessing( msg, e.message )
-            throw e 
+            msgSvc.processError( msg, e )
         }
 	}
-    
-	void deleteMapping( msg ) {
-		println 'Processing message -> ' + msg.action 
-		entitySvc.deleteEntityMapping( msg.attachment )
-		logSvc.log('ENTTIY-DELETE-MAPPING', 'EntityMapping', msg.attachment.parentid )
+
+	@After(pattern='MessagingService.onMessage', eval="#{result.type.matches('entity.process_mapping')}") 
+	public void interceptOnReceiveEntityProcessMapping( evt ) {
+		def msg = evt.result 
+		try {
+			println 'Processing message -> ' + msg.type
+			entitySvc.createEntityMapping( msg.attachment )
+			logSvc.log( msg.type, REF_TYPE, msg.attachment.entity.objid )
+			msgSvc.processedSuccessfully( msg )
+		}
+		catch( e ) {
+            msgSvc.processError( msg, e )
+        }
 	}
-	
-	void createMapping( msg ) {
-		println 'Processing message -> ' + msg.action 
-		entitySvc.createEntityMapping( msg.attachment )
-		logSvc.log('ENTTIY-PROCESS-MAPPING', 'EntityMapping', msg.attachment.entity.objid )
+
+
+	@After(pattern='MessagingService.onMessage', eval="#{result.type.matches('entity.delete_mapping')}") 
+	public void interceptOnReceiveEntityDeleteMapping( evt ) {
+		def msg = evt.result 
+		try {
+			println 'Processing message -> ' + msg.type
+			entitySvc.deleteEntityMapping( msg.attachment )
+			logSvc.log( msg.type, REF_TYPE, msg.attachment.parentid )
+			msgSvc.processedSuccessfully( msg )
+		}
+		catch( e ) {
+            msgSvc.processError( msg, e )
+        }
 	}
-	
-	
-    void createEntityForMapping( msg ) {
-		println 'Processing message -> ' + msg.action 
-		def parententity = msg.attachment.parententity 
-		entitySvc.createEntityForMapping( parententity )
-		logSvc.log('CREATE-ENTITY-FOR-MAPPING', 'EntityMapping', parententity.objid )
-    }
     
 }
 

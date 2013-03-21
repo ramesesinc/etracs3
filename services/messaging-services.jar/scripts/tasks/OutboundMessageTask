@@ -4,19 +4,19 @@ import com.rameses.invoker.client.*
 
 class OutboundMessageTask
 {
-    @Service('DynamicHttpInvokerService')
-    def invokerSvc
+    @Service(value="RemoteInboxService", connection="province_service") 
+	def remoteInboxSvc
 	
 	@Service('MessagingService')
     def msgSvc
     
-    @ProxyMethod
+    @Schedule(interval=10)
 	public def deliverMessage( task ) {
         def messages = msgSvc.getOutboxMessages()
 		messages.each{ msg ->
 			try {
 				println 'Sending message to remote -> ' + msg.receiver.id 
-				def retval = invokerSvc.invokeRemoteService( 'RemoteInboxService', 'receive', [msg] as Object[])
+				def retval = remoteInboxSvc.receive( msg )
 				if( retval.status == 'ok' ) {
 					msgSvc.deliveredSuccessfully( msg )
 				}
@@ -25,6 +25,7 @@ class OutboundMessageTask
 				}
 			}
 			catch( e ) {
+				println 'Error sending message : ' + e.message 
 				msgSvc.logMessage( msg, e.message )
 			}
 		}

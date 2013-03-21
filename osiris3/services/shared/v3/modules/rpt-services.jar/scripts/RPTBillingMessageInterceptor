@@ -16,30 +16,34 @@ class RPTBillingMessageInterceptor
 	@Service('MessagingService')
 	def msgSvc
 	
-	@After(pattern='MessagingService.onMessage') 
-	public void interceptOnReceive( evt ) {
+	def final REF_TYPE = 'RPTBill'
+
+	@After(pattern='MessagingService.onMessage', eval="#{result.type.matches('rptbill_generate')}") 
+	public void interceptOnReceiveRPTBillGenerate( evt ) {
         def msg = evt.result 
 		try{
-			println 'Processing message -> ' + msg.action 
-			if( msg.action == 'rptbill_generate') generateRPTBill( msg ) 
-			else if( msg.action == 'rptbill_post_generated') postGenerateRPTBill( msg ) 
+			println 'Processing message -> ' + msg.type 
+			billingSvc.generateRemoteRequestedBill( msg )
+			logSvc.log(msg.type, REF_TYPE, msg.attachment.sessionid )
 			msgSvc.processedSuccessfully(msg) 
 		}
 		catch( e ) {
-			e.printStackTrace()
-			msgSvc.errorProcessing(msg, e.message) 
+			msgSvc.processError( msg, e)
 		}
 	}
-    
-	void postGenerateRPTBill( msg ) {
-		billingSvc.postRemoteGeneratedBill( msg )
-		logSvc.log('RPTBILL-POST-GENERATED', 'RPTBill', msg.attachment.sessionid  )
-    }
-	
-    void generateRPTBill( msg ) {
-		billingSvc.generateRemoteRequestedBill( msg )
-		logSvc.log('RPTBILL-REMOTE', 'RPTBill', msg.attachment.sessionid )
-    }
+
+	@After(pattern='MessagingService.onMessage', eval="#{result.type.matches('rptbill_post_generated')}") 
+	public void interceptOnReceiveRPTBillPostGenerated( evt ) {
+        def msg = evt.result 
+		try{
+			billingSvc.postRemoteGeneratedBill( msg )
+			logSvc.log(msg.type, REF_TYPE, msg.attachment.sessionid  )
+			msgSvc.processedSuccessfully(msg) 
+		}
+		catch( e ) {
+			msgSvc.processError( msg, e )
+		}
+	}
 		
 }
 

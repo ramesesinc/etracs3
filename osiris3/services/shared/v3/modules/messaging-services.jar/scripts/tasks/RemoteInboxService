@@ -1,0 +1,34 @@
+import com.rameses.annotations.*;
+import com.rameses.common.*
+
+
+class RemoteInboxService
+{
+	@Service('MessagingService')
+    def msgSvc
+    
+	
+	@ProxyMethod
+	public def receive( msg ) {
+		println 'Receive messages from -> ' + msg.sender.id
+		def oldmsg = msgSvc.getInboxMessage( msg.objid )
+		if( oldmsg ) {
+			//the msg is probably resent, just confirm it
+			return status('ok', 'Resent Accepted.')
+		}
+		try {
+			msgSvc.saveInboxMessage( msg )
+			return status('ok', 'Successfully received.')
+		}
+		catch( e ) {
+			println 'Error receiving message -> ' + e.message 
+			return status('error', e.message )
+		}
+	}
+	
+	def status( stat, msg ) {
+		return [status:stat, msg:msg]
+	}
+	
+	
+}

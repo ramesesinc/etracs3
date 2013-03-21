@@ -16,26 +16,31 @@ class FAASMessageInterceptor
 	@Service('MessagingService')
 	def msgSvc
 	
-	@After(pattern='MessagingService.onMessage', eval="#{result.type.matches('faas.approve|faas.disapprove')}") 
-	public void interceptOnMessage( evt ) {
+	@After(pattern='MessagingService.onMessage', eval="#{result.type.matches('faas.approve')}") 
+	public void interceptOnMessageFaasApprove( evt ) {
 		def msg = evt.result 
-		println "FAASMessageInterceptor [${msg.type}]"
+		println 'Processing message -> ' + msg.type
 		
 		try {
-			if( msg.type == 'faas.approve') 
-				faasSvc.onlineApprove( msg.data.faasid, msg.data  )
-			else if( msg.type == 'faas.disapprove') 
-				faasSvc.onlineDisapprove( msg.data.faasid, msg.data  )
-			else 
-				throw new Exception('FAAS Cancellation action ' + msg.type + ' is not supported.')
-				
+			faasSvc.onlineApprove( msg.data.faasid, msg.data  )
 			msgSvc.processedSuccessfully( msg )
 		}
 		catch( e ) {
-			println '='*50
-            e.printStackTrace()
-            msgSvc.errorProcessing( msg, e.message )
-            throw e 
+			msgSvc.processError( msg, e )
+		}
+	}
+
+	@After(pattern='MessagingService.onMessage', eval="#{result.type.matches('faas.disapprove')}") 
+	public void interceptOnMessageFaasDisapprove( evt ) {
+		def msg = evt.result 
+		println 'Processing message -> ' + msg.type
+
+		try {
+			faasSvc.onlineDisapprove( msg.data.faasid, msg.data  )
+			msgSvc.processedSuccessfully( msg )
+		}
+		catch( e ) {
+			msgSvc.processError( msg, e )
 		}
 	}
 }

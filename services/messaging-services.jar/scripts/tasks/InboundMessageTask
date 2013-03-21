@@ -1,12 +1,11 @@
 import com.rameses.annotations.*
 import com.rameses.common.*
-import com.rameses.invoker.client.*
 
 class InboundMessageTask
 {
    
-    @Service('DynamicHttpInvokerService')
-    def invokerSvc
+    @Service(value="RemoteOutboxService", connection="province_service") 
+	def remoteOutboxSvc
     
 	@Service('MessagingService')
     def msgSvc
@@ -18,11 +17,11 @@ class InboundMessageTask
 	def OUTBOX_SCHEMA_NAME = 'messaging:outbox' 
 	
 	
-	@ProxyMethod
+	@Schedule(interval=10)
 	public def fetchMessage( task ) {
         try {
             def params = [ receiver : msgSvc.getDefaultSender(), ]
-            def msglist = invokerSvc.invokeRemoteService( 'RemoteOutboxService', 'fetchMessage', [params] as Object[])
+            def msglist = remoteOutboxSvc.fetchMessage(params)
 			msglist.each{ msg ->
 				println 'Processing message from ' + msg.sender  
 				//check if msg has already been fetched, check both inbox and processedinbox 
@@ -30,7 +29,7 @@ class InboundMessageTask
 				if( !oldmsg ) {
 					msgSvc.saveInboxMessage( msg )
 				}
-				invokerSvc.invokeRemoteService( 'RemoteOutboxService', 'fetchSuccess', [msg.objid] as Object[])
+				remoteOutboxSvc.fetchSuccess( msg.objid )
 			}
         }
         catch ( e ) {

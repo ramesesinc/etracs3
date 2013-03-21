@@ -1,0 +1,34 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import com.rameses.invoker.client.*
+
+class OutboundMessageTask
+{
+    @Service(value="RemoteInboxService", connection="province_service") 
+	def remoteInboxSvc
+	
+	@Service('MessagingService')
+    def msgSvc
+    
+    @Schedule(interval=10)
+	public def deliverMessage( task ) {
+        def messages = msgSvc.getOutboxMessages()
+		messages.each{ msg ->
+			try {
+				println 'Sending message to remote -> ' + msg.receiver.id 
+				def retval = remoteInboxSvc.receive( msg )
+				if( retval.status == 'ok' ) {
+					msgSvc.deliveredSuccessfully( msg )
+				}
+				else {
+					msgSvc.errorProcessing( msg, retval.msg )
+				}
+			}
+			catch( e ) {
+				println 'Error sending message : ' + e.message 
+				msgSvc.logMessage( msg, e.message )
+			}
+		}
+        return true
+	}
+}

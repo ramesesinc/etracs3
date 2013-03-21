@@ -164,17 +164,9 @@ class MessagingService
 		emsys.validate( msg.schemaname, msg )
         emsys.update( msg.schemaname, msg ) 
     }
-
-    @ProxyMethod
-    public void processError( msg, e ) throws Exception{
-		println '='*50
-        e.printStackTrace()
-        errorProcessing( msg, e.message )
-        throw e 
-	}
 	
 	@ProxyMethod
-	public void  errorProcessing( msg, errormsg ) {
+	public void  errorProcessing( msg, errormsg    ) {
         msg.message = errormsg 
 		msg.docstate = STATE_ERROR
 		emsys.validate( msg.schemaname, msg )

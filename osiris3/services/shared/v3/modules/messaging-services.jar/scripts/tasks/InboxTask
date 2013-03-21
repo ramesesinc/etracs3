@@ -1,0 +1,38 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+
+/*
+* Periodically reads sys_inbox for messages. When messages are available,
+* it dispatches the message by calling MessageListenerService.onreceive
+*
+* Messages bound for other recepients are automatically routed
+* and delivered
+*/
+class InboxTask
+{
+    @Service('MessagingService')
+    def msgSvc
+	
+	def INBOX_SCHEMA_NAME = 'messaging:inbox' 
+	def OUTBOX_SCHEMA_NAME = 'messaging:outbox' 
+	
+	
+	@Schedule(interval=10)
+	public def processMessage( task ) {
+		println 'Processing Inbox...'
+		def msglist = msgSvc.getInboxMessages( msgSvc.getDefaultSender().id )
+		msglist.each{ msg -> 
+			try {
+				println 'Processing inbox message[' + msg.type + ']'
+				msgSvc.onMessage( msg )
+				msgSvc.processedSuccessfully( msg )
+			}
+			catch( e ) {
+				println '='*50 
+				msgSvc.errorProcessing( msg, e.message) 
+			}	
+		}
+		msgSvc.moveOtherDestinationMessagesToOutbox()
+        return task
+	}	
+}

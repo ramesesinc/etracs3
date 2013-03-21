@@ -4,7 +4,6 @@ import com.rameses.common.*
 /*
 * Periodically reads sys_inbox for messages. When messages are available,
 * it dispatches the message by calling MessageListenerService.onreceive
-* and move the message from inbox to processedinbox 
 *
 * Messages bound for other recepients are automatically routed
 * and delivered
@@ -17,7 +16,8 @@ class InboxTask
 	def INBOX_SCHEMA_NAME = 'messaging:inbox' 
 	def OUTBOX_SCHEMA_NAME = 'messaging:outbox' 
 	
-	@ProxyMethod
+	
+	@Schedule(interval=10)
 	public def processMessage( task ) {
 		println 'Processing Inbox...'
 		def msglist = msgSvc.getInboxMessages( msgSvc.getDefaultSender().id )
@@ -33,6 +33,6 @@ class InboxTask
 			}	
 		}
 		msgSvc.moveOtherDestinationMessagesToOutbox()
-        return true
+        return task
 	}	
 }

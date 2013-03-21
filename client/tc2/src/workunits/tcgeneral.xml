@@ -44,6 +44,9 @@
         
         @Service('ReportParameterService')
         def svcParams;
+
+        @Service('NumberService')
+        def numSvc
         
         def listItem
         def message = ''
@@ -176,7 +179,7 @@
                 if( item.discounttype == null )
                     item.discount = 0.0
                 else 
-                    item.discount = item.baseamount - ( item.baseamount * item.discounttype.rate / 100.0 )
+                    item.discount = numSvc.round( item.baseamount * item.discounttype.rate / 100.0 )
                 item.amount = item.baseamount - item.discount
                 updateItemInfo()
             },

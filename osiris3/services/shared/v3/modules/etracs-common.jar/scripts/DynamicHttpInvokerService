@@ -9,7 +9,7 @@ class DynamicHttpInvokerService
     
     @ProxyMethod
     public def invokeRemoteService( servicename, methodname, params ) {
-        def remote = new DynamicHttpInvoker( var.remote_host, var.remote_context, false )
+        def remote = new com.rameses.invoker.client.DynamicHttpInvoker( var.remote_host, var.remote_context, false )
         remote.connectionTimeout = 60000 
         remote.readTimeout = 60000 
         def svc = remote.create( servicename )

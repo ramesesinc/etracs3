@@ -1,6 +1,6 @@
 import com.rameses.annotations.*
 import com.rameses.common.*
-import com.rameses.invoker.client.DynamicHttpTransfer
+//TODO: import com.rameses.invoker.client.DynamicHttpTransfer
 import com.rameses.io.FileTransfer
 import java.util.concurrent.*
 import java.io.*
@@ -13,10 +13,7 @@ class FAASAttachmentTask
     @PersistenceContext('main')
     def em 
 	
-	@Service('DynamicHttpInvokerService')
-    def invokerSvc
-    
-    @Service('Var')
+	@Service('Var')
     def var
 	
 	@Service('FAASService')
@@ -28,7 +25,7 @@ class FAASAttachmentTask
     @ProxyMethod
 	public def deliverAttachment( task ) {
 		def attachments = em.sqlContext.createNamedQuery('faas:getAttachmentForTransmittal').setMaxResults(2).resultList
-		uploadAttachmentsToRemote( attachments )
+		uploadAttachmentsToRemote2( attachments )
 		recoverySvc.recoverError( null )
         return true 
 	}
@@ -73,7 +70,9 @@ class FAASAttachmentTask
 	}
 	
     def uploadAttachmentsToRemote2( attachments ) {
-		if( ! var.remote_host ) {
+    	println 'FAASAttachmentTask.uploadAttachmentsToRemote not yet implemented...'
+    	/*
+    	if( ! var.remote_host ) {
 			return 
 		}
 		def remote_host = var.remote_host  
@@ -125,6 +124,7 @@ class FAASAttachmentTask
 				faasSvc.updateAttachmentState( it, 'SUBMITTED' )
 			}
 		}
+		*/
 
     }
     
